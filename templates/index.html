@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Live Camera Streams</h5>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="card-title mb-0">Live Camera Streams</h5>
+                    <div>
+                        <button id="startStreams" class="btn btn-sm btn-outline-success">Start Streams</button>
+                        <button id="stopStreams" class="btn btn-sm btn-outline-secondary">Stop Streams</button>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Camera 1</h6>
+                        <div class="ratio ratio-4x3 bg-dark">
+                            <!-- Stream will be attached only after user clicks Start Streams -->
+                            <img id="cam1" data-src="{{ url_for('video1') }}" alt="Camera 1" style="width:100%; height:100%; object-fit:cover;">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Camera 2</h6>
+                        <div class="ratio ratio-4x3 bg-dark">
+                            <img id="cam2" data-src="{{ url_for('video2') }}" alt="Camera 2" style="width:100%; height:100%; object-fit:cover;">
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">Last detection:</small>
+                    <div id="lastDetection" class="p-2 border rounded" style="background:#f8f9fa;">
+                        <strong id="lastName">None</strong> <span id="lastReg" class="text-muted"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Registered Users</h5>
+                <div class="list-group">
+                    {% if users %}
+                        {% for u in users %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ u.username }}</strong><br>
+                                    <small class="text-muted">{{ u.reg_id }}</small>
+                                </div>
+                                <div>
+                                        {% set thumb = (u.reg_id ~ '.jpg') %}
+                                        {% if uploads and (thumb in uploads) %}
+                                            <img src="{{ url_for('get_image', filename=thumb) }}" alt="thumb" class="rounded" style="width:48px; height:48px; object-fit:cover;">
+                                        {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No users registered yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+        </div>
+    </div>
+    <a href="/" onclick="reloadPage()">Go to Index</a>
+
+    <script>
+        function reloadPage() {
+            location.reload();
+        }
+    </script>
+    <script>
+        // Attach/detach stream image sources on user action to avoid opening cameras on page load
+        (function() {
+            const startBtn = document.getElementById('startStreams');
+            const stopBtn = document.getElementById('stopStreams');
+            const cam1 = document.getElementById('cam1');
+            const cam2 = document.getElementById('cam2');
+            const lastNameEl = document.getElementById('lastName');
+            const lastRegEl = document.getElementById('lastReg');
+
+            // Poll the server for last detection and update the UI. Optionally speak changes.
+            let lastSeen = null;
+            async function pollDetection() {
+                try {
+                    const res = await fetch("{{ url_for('last_detection_route') }}");
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    if (!data) return;
+                    const key = (data.name || '') + '|' + (data.reg_id || '');
+                    if (key !== lastSeen) {
+                        lastSeen = key;
+                        if (lastNameEl) lastNameEl.textContent = data.name || 'Unknown';
+                        if (lastRegEl) lastRegEl.textContent = data.reg_id ? ('(' + data.reg_id + ')') : '';
+                        // speak the detection briefly
+                        if (data.name && data.name !== 'Unknown' && 'speechSynthesis' in window) {
+                            const utter = new SpeechSynthesisUtterance(`${data.name}, ID ${data.reg_id}`);
+                            window.speechSynthesis.cancel();
+                            window.speechSynthesis.speak(utter);
+                        }
+                    }
+                } catch (e) {
+                    // ignore polling errors silently
+                }
+            }
+            setInterval(pollDetection, 1000);
+
+            function start() {
+                if (cam1 && cam1.dataset && cam1.dataset.src) {
+                    cam1.onerror = () => { lastNameEl.textContent = 'Camera 1 failed'; lastRegEl.textContent = ''; };
+                    cam1.onload = () => { /* loaded */ };
+                    cam1.src = cam1.dataset.src;
+                }
+                if (cam2 && cam2.dataset && cam2.dataset.src) {
+                    cam2.onerror = () => { lastNameEl.textContent = 'Camera 2 failed'; lastRegEl.textContent = ''; };
+                    cam2.onload = () => { /* loaded */ };
+                    cam2.src = cam2.dataset.src;
+                }
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            }
+
+            function stop() {
+                if (cam1) cam1.src = '';
+                if (cam2) cam2.src = '';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+
+            if (startBtn) startBtn.addEventListener('click', start);
+            if (stopBtn) stopBtn.addEventListener('click', stop);
+
+            // Initial state: streams stopped
+            if (stopBtn) stopBtn.disabled = true;
+        })();
+    </script>
+    </div>
+
+</body>
+
+</html>

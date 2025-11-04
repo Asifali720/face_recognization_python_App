@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>Attendance Data</title>
+    <style>
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .button-group {
+            margin-top: 20px;
+        }
+
+        .button-group button {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="heading">
+            <h1>Attendance Data</h1>
+            <h2>Attendance for date {{ date }}</h2>
+        </div>
+        <div class="main_section">
+            <form action="/Attendance_system/display_attendance" method="post">
+                <div class="form-group">
+                    <label for="date">Date :</label>
+                    <input type="date" name="date" id="date">
+                </div>
+                <button type="submit">Submit</button>
+            </form>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Date</th>
+                        <th>Roll No</th>
+                        <th>Division</th>
+                        <th>Branch</th>
+                        <th>Registration No</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in data %}
+                    <tr>
+                        <td>{{ record.id }}</td>
+                        <td>{{ record.name }}</td>
+                        <td>{{ record.start_time }}</td>
+                        <td>{{ record.end_time }}</td>
+                        <td>{{ record.date }}</td>
+                        <td>{{ record.roll_no }}</td>
+                        <td>{{ record.division }}</td>
+                        <td>{{ record.branch }}</td>
+                        <td>{{ record.reg_id }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="button-group">
+                <form action="{{ url_for('logout') }}" method="post" id="logoutForm">
+                    <button type="submit">Logout</button>
+                </form>
+                <form action="{{ url_for('profile') }}"class="profile-btn" method="post">
+                    <button type="submit">My Profile</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+        function reloadPage() {
+            location.reload();
+        }
+    </script>
+    {% if error %}
+    <script>
+        // Display an alert with the error message
+        alert("{{ error|safe}}");
+    </script>
+{% endif %}
+</body>
+
+</html>

@@ -1,0 +1,14 @@
+{
+    "params": {
+    "sql_url": "mysql://attendance_user:attendance_pass@127.0.0.1/college",
+        "camera_index_1": 0,
+        "camera_index_2": 1,
+        "morning_time": "9",
+        "evening_time": "19",
+        "cert_path": "keys/cert.pem",
+        "key_path": "keys/key.pem",
+        "encoding_file_path": "Resources/EncodeFile.p",
+        "upload_folder": "uploads",
+        "secret_key":"8cbd88d94e117dad6342c4ac666980a97e4200a5cd34ab4ec03574d5629bdda6"
+    }
+}

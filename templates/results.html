@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>Attendance Query Interface</title>
+</head>
+
+<body>
+    <div class="button-group">
+        <form action="{{ url_for('logout') }}" method="post" class="logoutForm">
+            <button type="submit">Logout</button>
+        </form>
+    </div>
+    </div>
+    <script>
+        function reloadPage() {
+            location.reload();
+        }
+    </script>
+    <div class="query">
+        <h1>Attendance Query</h1>
+        <form action="/Attendance_system/get_attendance" method="GET" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name">
+            </div>
+            <div class="form-group">
+                <label for="register id">Register Id:</label>
+                <input type="text" id="reg_id" name="reg_id">
+            </div>
+            <div class="form-group">
+                <label for="branch">Branch:</label>
+                <input type="text" id="branch" name="branch">
+            </div>
+            <div class="form-group">
+                <label for="division">Division:</label>
+                <input type="text" id="division" name="division">
+            </div>
+            <div class="form-group">
+                <label for="date">Date :</label>
+                <input type="date" name="date" id="date">
+            </div>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+    <br>
+    <br>
+
+    <div class="result">
+        <div class="heading">
+            <h1>Results</h1>
+            <h1>Attendance Results</h1>
+        </div>
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <ul>
+            {% for message in messages %}
+            <li style="color:black;">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+        {% block content %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Date</th>
+                    <th>Roll Number</th>
+                    <th>Division</th>
+                    <th>Branch</th>
+                    <th>Registration ID</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in attendance_records %}
+                <tr>
+                    <td><b>{{ record.name }}</b></td>
+                    <b>
+                        <td>{{ record.start_time }}
+                    </b></td>
+                    <td><b>{{ record.end_time }}</b></td>
+                    <td><b>{{ record.date }}</b></td>
+                    <td><b>{{ record.roll_no }}</b></td>
+                    <td><b>{{ record.division }}</b></td>
+                    <td><b>{{ record.branch }}</b></td>
+                    <td><b>{{ record.reg_id }}</b></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <br><br>
+
+
+        <!-- Modify the form in 'results.html' to include the date input -->
+        <form action="{{ url_for('download_attendance_csv') }}" method="post">
+            <input type="hidden" name="date" value="{{ request.args.get('date') }}">
+            <button type="submit" class="btn btn-primary">Download CSV</button>
+        </form>
+
+
+
+
+        {% endblock %}
+
+    </div>
+</body>
+{% if error %}
+<script>
+    // Display an alert with the error message
+    alert("{{ error|safe }}");
+</script>
+{% endif %}
+
+</html>

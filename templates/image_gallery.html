@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Gallery</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .image-name {
+            margin-top: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #d65252;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0bd53d;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="mt-5 mb-4">Image Gallery</h1>
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            {% for image_file in image_files %}
+            <div class="col">
+                <div class="card h-100">
+                    <img src="{{ url_for('get_image', filename=image_file) }}" class="card-img-top"
+                        alt="{{ image_file }}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ image_file }}</h5>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div>
+        <h2>No of images are: {{image_no}}</h2>
+    </div>
+    </div>
+    <form action="{{url_for('generate_encodings')}}" method="post">
+        <button type="submit">Generate</button>
+    </form>
+    <form action="{{url_for('data')}}">
+        <button type="submit">Back</button>
+    </form>
+    </div>
+    <!-- Bootstrap JS (optional if you want to use Bootstrap components that require JS) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

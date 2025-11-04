@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title mb-3">Register</h3>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, msg in messages %}
+                        <div class="alert alert-{{ 'success' if category=='success' else 'danger' }}" role="alert">{{ msg }}</div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                {% if error %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('register') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" name="username" id="username" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" name="email" id="email" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reg_id" class="form-label">Registration ID</label>
+                        <input type="text" class="form-control" name="reg_id" id="reg_id" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" name="password" id="password" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Role</label>
+                        <select class="form-select" name="role" id="role">
+                            <option value="student">Student</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <p>Capture live face for registration (required):</p>
+                        <div class="d-flex gap-3 align-items-start">
+                            <div>
+                                <!-- Video container: overlay shown on capture -->
+                                <div id="videoContainer" style="position:relative; width:320px; height:240px;">
+                                    <video id="video" width="320" height="240" playsinline class="border" style="display:none;"></video>
+                                    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+                                    <div id="captureOverlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.55); color:#fff; align-items:center; justify-content:center; font-weight:600; font-size:1.1rem; display:flex;">
+                                        Capturing...
+                                    </div>
+                                </div>
+
+                                <div class="mt-2">
+                                    <label class="form-label">Captured Preview</label>
+                                    <div class="border p-1 mb-2" style="width:320px; height:240px; display:flex; align-items:center; justify-content:center; background:#f8f9fa;">
+                                        <img id="preview" src="" alt="No capture" style="max-width:100%; max-height:100%; object-fit:contain; display:none;">
+                                    </div>
+                                    <button type="button" id="captureBtn" class="btn btn-outline-primary">Capture Live Face</button>
+                                    <span id="captureStatus" class="ms-2 text-muted"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="captured_image" id="captured_image">
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('login') }}">Already have an account? Login</a>
+                        <button type="submit" class="btn btn-primary">Register</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Webcam capture: start camera only on button click (user gesture required in many browsers)
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const captureBtn = document.getElementById('captureBtn');
+    const capturedInput = document.getElementById('captured_image');
+    const captureStatus = document.getElementById('captureStatus');
+
+    let stream = null;
+    let cameraStarted = false;
+    const overlay = document.getElementById('captureOverlay');
+    const preview = document.getElementById('preview');
+
+    async function startCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            // Some browsers require an explicit play() call and time to start producing frames.
+            try {
+                await video.play();
+            } catch (playErr) {
+                // play() may fail silently on some platforms; we'll still wait for 'playing' event.
+            }
+
+            // Wait until video has enough data or a short timeout
+            await new Promise((resolve) => {
+                if (video.readyState >= 3) return resolve();
+                const onPlaying = () => { video.removeEventListener('playing', onPlaying); resolve(); };
+                video.addEventListener('playing', onPlaying);
+                setTimeout(resolve, 1000);
+            });
+
+            // Make video visible and size the canvas to the actual video resolution
+            video.style.display = 'block';
+            canvas.width = video.videoWidth || canvas.width || 320;
+            canvas.height = video.videoHeight || canvas.height || 240;
+            cameraStarted = true;
+            captureStatus.textContent = ' Camera ready — click again to take photo';
+            captureBtn.textContent = 'Take Photo';
+        } catch (err) {
+            console.warn('Could not start camera:', err);
+            captureStatus.textContent = ' Camera unavailable';
+        }
+    }
+
+    function stopCamera() {
+        if (stream) {
+            const tracks = stream.getTracks();
+            tracks.forEach(t => t.stop());
+            stream = null;
+        }
+        video.style.display = 'none';
+        cameraStarted = false;
+        captureBtn.textContent = 'Capture Live Face';
+    }
+
+    captureBtn.addEventListener('click', async () => {
+        // If camera not started, start it on user click (required by browsers)
+        if (!cameraStarted) {
+            await startCamera();
+            return;
+        }
+
+        try {
+            // Ensure video has frames before capturing
+            if (video.readyState < 2) { // HAVE_CURRENT_DATA
+                captureStatus.textContent = ' Waiting for video...';
+                await new Promise((resolve) => {
+                    const onPlaying = () => { video.removeEventListener('playing', onPlaying); resolve(); };
+                    video.addEventListener('playing', onPlaying);
+                    setTimeout(resolve, 800);
+                });
+            }
+
+            // Capture image from video
+            const ctx = canvas.getContext('2d');
+            // If canvas size differs from video, update it to avoid stretched/black frames
+            if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+                canvas.width = video.videoWidth || canvas.width;
+                canvas.height = video.videoHeight || canvas.height;
+            }
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            // show overlay briefly so user sees capture occurred
+            if (overlay) {
+                overlay.style.display = 'flex';
+            }
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            capturedInput.value = dataUrl;
+            captureStatus.textContent = ' Captured';
+            // show preview image
+            if (preview) {
+                preview.src = dataUrl;
+                preview.style.display = 'block';
+            }
+            // hide overlay immediately now capture is done
+            if (overlay) overlay.style.display = 'none';
+            // Stop camera shortly after to allow preview rendering
+            setTimeout(() => {
+                stopCamera();
+            }, 200);
+        } catch (err) {
+            console.error('Capture failed:', err);
+            captureStatus.textContent = ' Capture failed';
+            if (overlay) overlay.style.display = 'none';
+        }
+    });
+</script>
+
+{% endblock %}

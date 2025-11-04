@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Faces{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Stored Faces</h2>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="alert alert-{{ category }}" role="alert">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Thumbnail</th>
+        <th>Name</th>
+        <th>Reg ID</th>
+        <th>Email</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in faces %}
+      <tr>
+        <td>{{ f.id }}</td>
+        <td>
+          {% if f.image_path %}
+            <img src="{{ url_for('get_image', filename=f.image_path | basename) }}" alt="thumb" style="height:60px">
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>{{ f.name or 'N/A' }}</td>
+        <td>{{ f.reg_id or 'N/A' }}</td>
+        <td>{{ f.email or 'N/A' }}</td>
+        <td>
+          <form method="post" action="{{ url_for('delete_face', face_id=f.id) }}" onsubmit="return confirm('Delete this face?');">
+            <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

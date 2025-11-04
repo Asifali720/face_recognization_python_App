@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>Document</title>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Profile Section -->
+        <div class="profile-section">
+            <h2>Profile</h2>
+            <p><strong>Username:</strong> {{ current_user.username }}</p>
+            <p><strong>Role:</strong> {{ current_user.role }}</p>
+            <p><strong>RegID:</strong> {{ current_user.reg_id }}</p>
+            <p><strong>Total no of attendance:</strong> {{ no_of_attendance }}</p>
+            <!-- Add more user information here as needed -->
+        </div>
+
+        <!-- Table Section -->
+        <div class="table-section">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Date</th>
+                        <th>Roll No</th>
+                        <th>Division</th>
+                        <th>Branch</th>
+                        <th>Registration No</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in data %}
+                    <tr>
+                        <td><b>{{ record.name }}</b></td>
+                        <td><b>{{ record.start_time }}</b></td>
+                        <td><b>{{ record.end_time }}</b></td>
+                        <td><b>{{ record.date }}</b></td>
+                        <td><b>{{ record.roll_no }}</b></td>
+                        <td><b>{{ record.division }}</b></td>
+                        <td><b>{{ record.branch }}</b></td>
+                        <td><b>{{ record.reg_id }}</b></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <form action="{{url_for('display_attendance')}}">
+        <button type="submit">Back</button>
+    </form>
+</body>
+{% if error %}
+<script>
+    // Display an alert with the error message
+    alert("{{ error|safe }}");
+</script>
+{% endif %}
+
+</html>
