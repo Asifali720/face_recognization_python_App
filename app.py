@@ -296,14 +296,12 @@ def eveningattendance(name, current_date):
 def mysqlconnect(student_id):
     # If student_id is None, return None for all values
     if student_id is None:
-        return None, None, None, None, None
+        return None
 
     try:
         with app.app_context():
-            # Query student data using SQLAlchemy
-            student_data = Student_data.query.filter_by(
-                regid=student_id).first()
-
+            # First try to find detailed student data
+            student_data = Student_data.query.filter_by(regid=student_id).first()
             if student_data:
                 # If student data is found, extract values
                 id = student_data.id
@@ -311,15 +309,20 @@ def mysqlconnect(student_id):
                 roll_no = student_data.rollno
                 division = student_data.division
                 branch = student_data.branch
-
                 return id, name, roll_no, division, branch
-            else:
-                # If no student is found, return None for all values
-                return None, None, None, None, None
 
+            # Fallback: some deployments store registrations in `Users` table
+            # (created via the registration flow). If a Users record exists for
+            # this reg_id, return the username so the front-end can display it.
+            user = Users.query.filter_by(reg_id=student_id).first()
+            if user:
+                return None, user.username, None, None, None
+
+            # Not found in either table
+            return None
     except Exception as e:
         print("Error:", e)
-        return None, None, None, None, None
+        return None
 
 
 # Function which does the face recognition and displaying the video feed
