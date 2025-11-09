@@ -30,14 +30,23 @@
                         <input type="email" class="form-control" name="email" id="email" required>
                     </div>
 
-                    <div class="mb-3">
+                    <!-- <div class="mb-3">
                         <label for="reg_id" class="form-label">Registration ID</label>
                         <input type="text" class="form-control" name="reg_id" id="reg_id" required>
+                    </div> -->
+
+                      <div class="mb-3">
+                        <label for="age" class="form-label">Age</label>
+                            <div class="input-group" style="max-width:160px;">
+                                <span class="input-group-text">🎂</span>
+                                <input type="number" class="form-control" name="age" id="age" min="1" placeholder="e.g. 21" required>
+                            </div>
+                            <div class="form-text">Please enter your age (required).</div>
                     </div>
 
                     <div class="mb-3">
                         <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" name="password" id="password" required>
+                        <input type="password" class="form-control" name="password" id="password"  required>
                     </div>
 
                     <div class="mb-3">
@@ -45,7 +54,7 @@
                         <select class="form-select" name="role" id="role">
                             <option value="student">Student</option>
                             <option value="teacher">Teacher</option>
-                            <option value="admin">Admin</option>
+                            <!-- <option value="admin">Admin</option> -->
                         </select>
                     </div>
 

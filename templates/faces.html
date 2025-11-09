@@ -5,6 +5,30 @@
 {% block content %}
 <div class="container mt-4">
   <h2>Stored Faces</h2>
+
+  {% if detection_logs %}
+  <div class="mb-4">
+    <h4>Recent Recognitions</h4>
+    <table class="table table-sm table-bordered">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Name</th>
+          <th>Reg ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in detection_logs %}
+        <tr>
+          <td>{{ d.detected_at }}</td>
+          <td>{{ d.name or 'Unknown' }}</td>
+          <td>{{ d.reg_id or 'N/A' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, msg in messages %}

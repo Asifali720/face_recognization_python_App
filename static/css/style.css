@@ -1,14 +1,14 @@
 /* style.css */
 
 body {
-    color: white;
-    font-family: roboto, sans-serif;
+    color: #222;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #B0C4DE;
-    background-image: url('../images/back.jpg'); 
-    background-size: cover; /* Cover the entire viewport */
-    background-position: center fixed; /* Center the image and keep it fixed *//* Center the image */
+    background-color: #eef2f6;
+    background-image: url('../images/back.jpg');
+    background-size: cover;
+    background-position: center center;
 }
 
 /* General styles for forms and tables */
@@ -16,24 +16,22 @@ body {
 .login_form,
 .query,
 .results {
-    color: rgb(10, 10, 235);
-    margin: 50px auto;
-    padding: 30px;
-    padding-right: 50px;
-    border-radius: 25px;
-    box-shadow: 0px 0px 50px rgba(64, 64, 64, 0.552);
-    background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background color */
-    backdrop-filter: blur(10px); /* Apply backdrop filter for frosted effect */
-    min-height: auto; /* Adjust as needed */
+    margin: 40px auto;
+    padding: 28px;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(22, 33, 62, 0.12);
+    background-color: rgba(255, 255, 255, 0.96);
 }
 
 .login_form{
-    width: 30%;
+    max-width: 420px;
+    width: 95%;
 }
 
 .data_form,
 .query{
-    width: 50%;
+    max-width: 900px;
+    width: 95%;
 }
 .profile-section {
     color: rgb(10, 10, 235);
@@ -47,10 +45,11 @@ body {
     min-height: auto; /* Adjust as needed */
 }
 h1 {
-    font-family: roboto;
+    font-family: inherit;
     text-align: center;
-    margin: -5px auto 25px;
-    font-weight: bolder;
+    margin: 0 0 18px;
+    font-weight: 700;
+    color: #0b2a4a;
 }
 
 h2 {
@@ -69,40 +68,51 @@ label {
 input[type="text"],
 input[type="file"],
 input[type="password"],
-select {
-    width: 100%; /* Full width */
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+select, textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d7dce6;
+    border-radius: 8px;
+    background: #fff;
+    transition: box-shadow .15s ease, border-color .15s ease;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: #6aa0ff;
+    box-shadow: 0 6px 18px rgba(48, 110, 255, 0.08);
 }
 
 button {
-    width: auto; /* Full width */
-    padding: 10px 20px;
-    background-color: #d65252;
+    display: inline-block;
+    padding: 10px 18px;
+    background-color: #2563eb; /* primary */
     color: #fff;
     border: none;
-    border-radius: 5px;
+    border-radius: 10px;
     cursor: pointer;
-    transition: background-color 0.3s;
-    margin:40px;
+    transition: transform .08s ease, box-shadow .12s ease;
+    box-shadow: 0 6px 18px rgba(37,99,235,0.16);
 }
 
-button:hover {
-    background-color: #0bd53d;
+button:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(37,99,235,0.18); }
+
+.btn-secondary {
+    background-color: #f3f4f6; color: #111827; box-shadow: none; border:1px solid #e5e7eb;
 }
 
 /* Table styles */
 table {
-    width: 95%;
+    width: 100%;
     border-collapse: collapse;
-    margin-top: 40px;
-    margin-left: 35px;
-    color: #333;
-    border-radius: 10px;
+    margin-top: 20px;
+    color: #233;
+    border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    font-weight: 650;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
 th, td {
@@ -144,43 +154,30 @@ tbody tr {
 }
 
 
-.heading{
-    color: rgb(10, 10, 235);
-    width: 100%; /* Set maximum width */
+.heading{ 
+    color: #0b2a4a;
+    width: 100%;
     margin-top: 5px;
     margin-bottom: 10px;
-    padding-top: 25px;
-    padding-bottom: 8px;
-    border-radius: 5px;
-    box-shadow: 0px 0px 50px rgba(64, 64, 64, 0.552);
-    background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background color */
-    backdrop-filter: blur(10px); /* Apply backdrop filter for frosted effect */
-    min-height: auto;
+    padding: 16px 18px;
+    border-radius: 8px;
+    background-color: rgba(255,255,255,0.98);
+    box-shadow: 0 8px 24px rgba(11,42,74,0.04);
 }
 
 .main_section{
-    color: rgb(10, 10, 235);
-    width: 100%; /* Set maximum width */
+    color: #0b2a4a;
+    width: 100%;
     margin: 10px auto;
-    padding: 30px;
-    border-radius: 5px;
-    box-shadow: 0px 0px 50px rgba(64, 64, 64, 0.552);
-    background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background color */
-    backdrop-filter: blur(10px); /* Apply backdrop filter for frosted effect */
-    min-height: auto; /* Adjust as needed */
-    align-items: center;
+    padding: 22px;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(11,42,74,0.04);
+    background-color: rgba(255,255,255,0.98);
 }
 
-.profile-btn {
-    position: absolute;
-    top: 10px; /* Adjust top position as needed */
-    right: 10px; /* Adjust right position as needed */
-    margin-right: 30px;
-}
+.profile-btn { position: relative; }
+.logoutForm{ position: relative; }
 
-.logoutForm{
-    position: absolute;
-    top: 10px; /* Adjust top position as needed */
-    left: 10px; /* Adjust right position as needed */
-    margin-right: 30px;
-}
+/* Small utility helpers */
+.text-muted { color: #6b7280; }
+.card-centered { max-width: 520px; margin: 40px auto; }

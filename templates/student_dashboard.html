@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-6">
+    <div class="card bg-white shadow-sm mb-3">
+      <div class="card-body">
+        <h3 class="card-title">Your Attendance Dashboard</h3>
+        <p class="card-text">Use the camera below to attempt attendance. Make sure your face is visible to the camera.</p>
+
+        <div class="text-center mb-3">
+          <!-- video stream -->
+          <img id="video-stream" src="{{ url_for('video1') }}" alt="Live camera" class="img-fluid rounded" style="background:white;" />
+        </div>
+
+        <form method="post" action="{{ url_for('student_attempt_attendance') }}">
+          <button type="submit" class="btn btn-primary">Attempt Attendance (by face)</button>
+        </form>
+
+        <div id="detected" class="mt-3">
+          <h5>Last recognized</h5>
+          <p id="detected-name">{{ last_detection.name if last_detection else 'N/A' }}</p>
+          <p id="detected-reg">{{ last_detection.reg_id if last_detection else 'N/A' }}</p>
+          <p id="detected-time">{{ last_detection.timestamp if last_detection else '' }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card bg-white shadow-sm mb-3">
+      <div class="card-body">
+        <h4 class="card-title">Your Attendance Records</h4>
+        {% if attendance_records and attendance_records|length > 0 %}
+        <div class="table-responsive">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Start Time</th>
+              <th>End Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in attendance_records %}
+            <tr>
+              <td>{{ r.date }}</td>
+              <td>{{ r.start_time or '-' }}</td>
+              <td>{{ r.end_time or '-' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p>No attendance records yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Poll /last_detection and update the small status area so the student can
+// see what face is currently recognized by the running stream.
+async function pollLastDetection() {
+  try {
+  const resp = await fetch("{{ url_for('last_detection_route') }}");
+    if (!resp.ok) return;
+    const data = await resp.json();
+    document.getElementById('detected-name').textContent = data.name || 'N/A';
+    document.getElementById('detected-reg').textContent = data.reg_id || 'N/A';
+    document.getElementById('detected-time').textContent = data.timestamp || '';
+  } catch (e) {
+    // ignore polling errors silently
+  }
+}
+setInterval(pollLastDetection, 1500);
+// initial poll
+pollLastDetection();
+</script>
+
+{% endblock %}
