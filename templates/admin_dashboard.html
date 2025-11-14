@@ -85,27 +85,6 @@
   </table>
   </div>
 
-    <hr>
-    <h4>Face Records</h4>
-  <div class="table-responsive w-100">
-  <table class="table table-sm table-hover w-100">
-      <thead>
-        <tr><th>ID</th><th>Name</th><th>Reg ID</th><th>Image</th><th>Created</th></tr>
-      </thead>
-      <tbody>
-        {% for f in users %}
-        <tr>
-          <td>{{ f.id }}</td>
-          <td>{{ f.username or '(unknown)' }}</td>
-          <td>{{ f.reg_id or '(N/A)' }}</td>
-          <td>{% if f.image_path %}<a href="{{ url_for('get_image', filename=f.image_path.split('/')[-1]) }}" target="_blank">view</a>{% else %} - {% endif %}</td>
-          <td>{{ f.created_at }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-  </table>
-  </div>
-
   </div>
 </div>
 {% endblock %}

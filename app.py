@@ -319,64 +319,27 @@ def stop_camera():
         camera = None
 
         try:
-            with app.app_context():   # Needed for DetectionLog + DB flush
-                # Flush buffered detections
-                with detection_list_lock:
-                    if current_stream_detections:
-                        dedup = {}
+            # Flush buffered detections with proper transaction handling
+            with detection_list_lock:
+                if current_stream_detections:
+                    # Create a copy to avoid holding lock during DB operations
+                    detections_to_save = current_stream_detections.copy()
+                    current_stream_detections.clear()
+                    recent_detection_cache.clear()
+                else:
+                    detections_to_save = []
 
-                        for ev in current_stream_detections:
-                            key = ev.get('reg_id') or ev.get('name')
-                            dt = ev.get('detected_at') or datetime.datetime.utcnow()
+            # Process detections outside the lock
+            if detections_to_save:
+                save_detections_safely(detections_to_save)
 
-                            # Keep ONLY latest timestamp
-                            if key in dedup:
-                                if dt > dedup[key]['detected_at']:
-                                    dedup[key] = {
-                                        'reg_id': ev.get('reg_id'),
-                                        'name': ev.get('name'),
-                                        'detected_at': dt
-                                    }
-                            else:
-                                dedup[key] = {
-                                    'reg_id': ev.get('reg_id'),
-                                    'name': ev.get('name'),
-                                    'detected_at': dt
-                                }
-
-                        # Write deduped logs
-                        for key, info in dedup.items():
-                            try:
-                                log = DetectionLog(
-                                    reg_id=info['reg_id'],
-                                    name=info['name'],
-                                    detected_at=info['detected_at']
-                                )
-                                db.session.add(log)
-                            except Exception:
-                                db.session.rollback()
-
-                        try:
-                            db.session.commit()
-                        except Exception:
-                            db.session.rollback()
-
-                        # Clear caches
-                        current_stream_detections.clear()
-                        recent_detection_cache.clear()
-
-         
+            # Save last detection if valid
             if (
                 last_detection.name 
                 and last_detection.name != 'Unknown'
                 and last_detection.reg_id 
                 and last_detection.reg_id != 'N/A'
             ):
-                update_last_detection(
-                    last_detection.reg_id,
-                    last_detection.name,
-                    last_detection.age
-                )
                 print(f"Saved last detection to DB: {last_detection.name} ({last_detection.reg_id})")
             else:
                 print(f"Skipped saving detection - invalid: name={last_detection.name}, reg_id={last_detection.reg_id}")
@@ -384,6 +347,98 @@ def stop_camera():
         except Exception as e:
             logging.exception('Failed to flush detection buffer on stop_camera: %s', e)
 
+def save_detections_safely(detections):
+    """Safely save detections to database with proper error handling"""
+    if not detections:
+        return
+    
+    # Deduplicate by latest timestamp
+    dedup = {}
+    for ev in detections:
+        key = ev.get('reg_id') or ev.get('name')
+        dt = ev.get('detected_at') or datetime.datetime.utcnow()
+
+        if key in dedup:
+            if dt > dedup[key]['detected_at']:
+                dedup[key] = {
+                    'reg_id': ev.get('reg_id'),
+                    'name': ev.get('name'),
+                    'detected_at': dt
+                }
+        else:
+            dedup[key] = {
+                'reg_id': ev.get('reg_id'),
+                'name': ev.get('name'),
+                'detected_at': dt
+            }
+
+    # Save each detection with individual transaction
+    successful_saves = 0
+    for key, info in dedup.items():
+        try:
+            # Use individual transactions for each detection
+            with app.app_context():
+                log = DetectionLog(
+                    reg_id=info['reg_id'],
+                    name=info['name'],
+                    detected_at=info['detected_at']
+                )
+                db.session.add(log)
+                db.session.commit()
+                successful_saves += 1
+                print(f"Saved detection log: {info['name']} ({info['reg_id']})")
+                
+        except Exception as e:
+            # Rollback and log error, but continue with other detections
+            db.session.rollback()
+            logging.error(f"Failed to save detection log for {info['name']}: {str(e)}")
+            continue
+
+    print(f"Successfully saved {successful_saves}/{len(dedup)} detection logs")
+
+# Alternative: Batch save with single transaction (faster but all-or-nothing)
+def save_detections_batch(detections):
+    """Save all detections in a single transaction"""
+    if not detections:
+        return
+    
+    dedup = {}
+    for ev in detections:
+        key = ev.get('reg_id') or ev.get('name')
+        dt = ev.get('detected_at') or datetime.datetime.utcnow()
+
+        if key in dedup:
+            if dt > dedup[key]['detected_at']:
+                dedup[key] = {
+                    'reg_id': ev.get('reg_id'),
+                    'name': ev.get('name'),
+                    'detected_at': dt
+                }
+        else:
+            dedup[key] = {
+                'reg_id': ev.get('reg_id'),
+                'name': ev.get('name'),
+                'detected_at': dt
+            }
+
+    try:
+        with app.app_context():
+            for key, info in dedup.items():
+                log = DetectionLog(
+                    reg_id=info['reg_id'],
+                    name=info['name'],
+                    detected_at=info['detected_at']
+                )
+                db.session.add(log)
+            
+            db.session.commit()
+            print(f"Successfully saved {len(dedup)} detection logs in batch")
+            
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Batch save of detection logs failed: {str(e)}")
+        # Optionally retry individual saves here
+        save_detections_safely(list(dedup.values()))
 
 # Function for comparing incoming face with encoded file
 def compare(encodeListKnown, encodeFace):
@@ -473,11 +528,9 @@ def mysqlconnect(student_id):
 
     try:
         with app.app_context():
-            print(f"\n🔍 Looking up student_id: {student_id} (type: {type(student_id)})")
             
             # First try to find detailed student data
             student_data = Student_data.query.filter_by(regid=student_id).first()
-            print(f"  Student_data query result: {student_data}")
             
             if student_data:
                 # If student data is found, extract values
@@ -486,7 +539,6 @@ def mysqlconnect(student_id):
                 roll_no = student_data.rollno
                 division = student_data.division
                 branch = student_data.branch
-                print(f"  ✓ Found in Student_data: {name}")
                 # student_data may not have age; try Face table for age
                 # Prefer getting age from Users (if registration stored age there),
                 # otherwise fall back to Face.age if present. This avoids relying
@@ -507,10 +559,8 @@ def mysqlconnect(student_id):
             # Fallback: some deployments store registrations in `Users` table
             # (created via the registration flow). If a Users record exists for
             # this reg_id, return the username so the front-end can display it.
-            print(f"  Student_data not found, checking Users table...")
             user = Users.query.filter_by(reg_id=student_id).first()
             if user:
-                print(f"  ✓ Found in Users: {user.username}")
                 # Users may store age directly. As a fallback for roll number
                 # (Attendance.roll_no is NOT NULL) use the user's reg_id so
                 # attendance rows can still be recorded even when
@@ -520,9 +570,6 @@ def mysqlconnect(student_id):
                 return None, user.username, roll_fallback, None, None, age_val
 
             # Not found in either table - create a fallback entry
-            print(f"  ✗ NOT FOUND in Student_data or Users tables")
-            print(f"  📊 Available Student_data regids: {[s.regid for s in Student_data.query.all()]}")
-            print(f"  📊 Available Users reg_ids: {[u.reg_id for u in Users.query.all()]}")
             return None
     except Exception as e:
         print(f"Error in mysqlconnect: {e}")
@@ -575,7 +622,6 @@ def gen_frames(camera):
             reg_id = student_id
             # For display, show a readable label even if name is missing
             display_name = name if name else 'Unknown'
-            print(display_name)
             # update last_detection so front-end can poll for recognized faces
             # Only update if we have a valid match (student_id and name are not None)
             try:
@@ -690,7 +736,6 @@ def video2():
 @app.route('/last_detection')
 def last_detection_route():
     try:
-        # Return the most recent detection as JSON
         return jsonify(asdict(last_detection))
     except Exception:
         return jsonify(asdict(Detection()))
@@ -876,7 +921,7 @@ def register():
         # Check if username or reg_id already exists
         existing_user = Users.query.filter_by(username=username).first()
         # existing_reg_id = Users.query.filter_by(reg_id=reg_id).first()
-
+        main_reg_id = generate_unique_reg_id()
         if existing_user:
             error = 'Username already exists!'
             print('Username already exists!')
@@ -890,6 +935,7 @@ def register():
                 email = request.form.get('email')
                 captured_dataurl = request.form.get('captured_image')
                 age = request.form.get('age')
+                role = request.form.get('role')
 
                 # Normalize age to integer if possible
                 try:
@@ -907,7 +953,10 @@ def register():
                 if not age:
                     error = 'Age is required.'
                     return render_template('register.html', error=error)
-
+                if role == "student":
+                     new_student = Student_data(name=username, rollno=random.randint(0, 99),
+                                                division="N/A", branch="N/A", regid=main_reg_id)
+                     db.session.add(new_student)
                 # helper to decode dataurl -> bytes
                 def dataurl_to_bytes(dataurl):
                     header, encoded = dataurl.split(',', 1)
@@ -978,7 +1027,7 @@ def register():
 
                 # Use the captured image as the registered photo; save it to uploads
 
-                reg_id = generate_unique_reg_id()
+                reg_id = main_reg_id
                 filename_ext = 'jpg'
                 safe_name = secure_filename(f"{reg_id}.{filename_ext}")
                 upload_folder = app.config.get('UPLOAD_FOLDER', 'uploads')
@@ -1518,6 +1567,7 @@ def student_attempt_attendance():
                     Attendance.date == current_date,
                     Attendance.start_time != None
                 ).first()
+                start_camera()
                 if existing_entry:
                     if existing_entry.end_time:
                         flash('Evening attendance already recorded.', 'info')
@@ -1533,8 +1583,9 @@ def student_attempt_attendance():
                             flash('Failed to record attendance. Try again or contact admin.', 'error')
                 else:
                     flash('No existing morning attendance found to update for evening.', 'warning')
-
+        start_camera()
         return redirect(url_for('student_dashboard'))
+   
     except Exception as e:
         logging.exception('student_attempt_attendance failed: %s', e)
         flash('An internal error occurred while attempting attendance.', 'error')
