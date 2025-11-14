@@ -38,6 +38,97 @@ encodeListKnownWithIds = pickle.load(file)
 file.close()
 encodeListKnown, studentIds = encodeListKnownWithIds
 
+print(f"✓ Loaded {len(encodeListKnown)} face encodings")
+print(f"✓ Student IDs: {studentIds[:5]}..." if len(studentIds) > 5 else f"✓ Student IDs: {studentIds}")
+
+# App configs
+app = Flask(__name__)
+app.config['SECRET_KEY'] = params['secret_key']
+app.config['SQLALCHEMY_DATABASE_URI'] = params['sql_url']
+db = SQLAlchemy(app)
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+app.config['UPLOAD_FOLDER'] = params['upload_folder']
+hostedapp = Flask(__name__)
+hostedapp.wsgi_app = DispatcherMiddleware(
+    NotFound(), {"/Attendance_system": app})
+cert_path = params['cert_path']
+key_path = params['key_path']
+bcrypt = Bcrypt()
+migrate = Migrate(app, db)
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+# Models used to connect in SQL Alchemy
+# Model of students data table
+class Student_data(db.Model):
+    __tablename__ = 'student_data'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
+    rollno = db.Column(db.String(120), unique=True, nullable=False)
+    division = db.Column(db.String(80), nullable=False)
+    branch = db.Column(db.String(80), nullable=False)
+    regid = db.Column(db.String(80), unique=True, nullable=False)
+
+
+# Model of Attendance table
+class Attendance(db.Model):
+    __tablename__ = 'attendance'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    start_time = db.Column(db.String(20))
+    end_time = db.Column(db.String(20))
+    date = db.Column(db.Date, default=datetime.date.today)
+    roll_no = db.Column(db.String(20), nullable=False, unique=False)
+    division = db.Column(db.String(10))
+    branch = db.Column(db.String(100))
+    reg_id = db.Column(db.String(100))
+
+
+# Model of users table
+class Users(db.Model, UserMixin):
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(100), nullable=False)
+    password = db.Column('psw', db.String(128), nullable=False)
+    reg_id = db.Column(db.String(20), nullable=False)
+    role = db.Column(db.String(20))
+    age = db.Column(db.Integer)
+    email = db.Column(db.String(200))
+
+    def __repr__(self):
+        return f'<User: {self.username}, Role: {self.role}, Age: {self.age}>'
+
+    def get_id(self):
+        return str(self.id)
+
+
+# New model to store face records and embeddings for faster management
+class Face(db.Model):
+    __tablename__ = 'faces'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200))
+    reg_id = db.Column(db.String(50), index=True)
+    email = db.Column(db.String(200))
+    image_path = db.Column(db.String(500))
+    # Store pickled embedding bytes
+    embedding = db.Column(db.LargeBinary)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Face id={self.id} reg_id={self.reg_id} name={self.name}>'
+
+
+class DetectionLog(db.Model):
+    __tablename__ = 'detection_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    reg_id = db.Column(db.String(50))
+    name = db.Column(db.String(200))
+    detected_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    def __repr__(self):
+        return f'<DetectionLog id={self.id} reg_id={self.reg_id} name={self.name} detected_at={self.detected_at}>'
+
 
 # random reg id func utility
 def generate_unique_reg_id():
@@ -45,6 +136,36 @@ def generate_unique_reg_id():
         reg_id = random.randint(1000, 9999)
         if not Users.query.filter_by(reg_id=str(reg_id)).first():
             return str(reg_id)
+
+def update_last_detection(reg_id, name, age):
+    """Update detection log in database within app context"""
+    try:
+        with app.app_context():
+            try:
+                # Try to find the most recent detection log
+                record = DetectionLog.query.order_by(DetectionLog.detected_at.desc()).first()
+                
+                if not record:
+                    record = DetectionLog()
+                else:
+                    # Create a new record instead of updating the old one
+                    record = DetectionLog()
+                
+                record.reg_id = reg_id
+                record.name = name
+                record.detected_at = datetime.datetime.utcnow()
+                
+                db.session.add(record)
+                db.session.commit()
+                print(f"Last detection updated in DB: {name} ({reg_id})")
+            except Exception as db_error:
+                db.session.rollback()
+                print(f"Database error updating last detection: {db_error}")
+                logging.exception("Failed to update detection log: %s", db_error)
+    except Exception as e:
+        print(f"Error updating last detection: {e}")
+        logging.exception("Error in update_last_detection: %s", e)
+
 
 # Ensure the users table has an `email` column. If the column is missing, try
 # to add it via ALTER TABLE so the registration form can store email addresses.
@@ -82,24 +203,6 @@ def ensure_users_email_column():
 
 # Do not attempt schema changes before the Flask app and DB are initialized.
 # The function will be called after app/db creation below.
-
-
-# App configs
-app = Flask(__name__)
-app.config['SECRET_KEY'] = params['secret_key']
-app.config['SQLALCHEMY_DATABASE_URI'] = params['sql_url']
-db = SQLAlchemy(app)
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-app.config['UPLOAD_FOLDER'] = params['upload_folder']
-hostedapp = Flask(__name__)
-hostedapp.wsgi_app = DispatcherMiddleware(
-    NotFound(), {"/Attendance_system": app})
-cert_path = params['cert_path']
-key_path = params['key_path']
-bcrypt = Bcrypt()
-migrate = Migrate(app, db)
-login_manager = LoginManager()
-login_manager.init_app(app)
 
 # After DB and app are initialized, try to ensure the users.email column exists.
 try:
@@ -198,85 +301,6 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# Models used to connect in SQL Alchemy
-# Model of students data table
-class Student_data(db.Model):
-    __tablename__ = 'student_data'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), unique=True, nullable=False)
-    rollno = db.Column(db.String(120), unique=True, nullable=False)
-    division = db.Column(db.String(80), nullable=False)
-    branch = db.Column(db.String(80), nullable=False)
-    regid = db.Column(db.String(80), unique=True, nullable=False)
-
-
-# Model of Attendance table
-class Attendance(db.Model):
-    __tablename__ = 'attendance'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    start_time = db.Column(db.String(20))
-    end_time = db.Column(db.String(20))
-    date = db.Column(db.Date, default=datetime.date.today)
-    roll_no = db.Column(db.String(20), nullable=False, unique=False)
-    division = db.Column(db.String(10))
-    branch = db.Column(db.String(100))
-    reg_id = db.Column(db.String(100))
-
-
-# Model of users table
-class Users(db.Model, UserMixin):
-    __tablename__ = 'users'
-
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), nullable=False)
-    password = db.Column('psw', db.String(128), nullable=False)
-    reg_id = db.Column(db.String(20), nullable=False)
-    role = db.Column(db.String(20))
-    age = db.Column(db.Integer)
-    email = db.Column(db.String(200))
-
-    def __repr__(self):
-        return f'<User: {self.username}, Role: {self.role}, Age: {self.age}>'
-
-    def get_id(self):
-        return str(self.id)
-
-
-# New model to store face records and embeddings for faster management
-class Face(db.Model):
-    __tablename__ = 'faces'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200))
-    reg_id = db.Column(db.String(50), index=True)
-    email = db.Column(db.String(200))
-    image_path = db.Column(db.String(500))
-    # Store pickled embedding bytes
-    embedding = db.Column(db.LargeBinary)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-
-    def __repr__(self):
-        return f'<Face id={self.id} reg_id={self.reg_id} name={self.name}>'
-
-
-class DetectionLog(db.Model):
-    __tablename__ = 'detection_logs'
-    id = db.Column(db.Integer, primary_key=True)
-    reg_id = db.Column(db.String(50))
-    name = db.Column(db.String(200))
-    detected_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-
-    def __repr__(self):
-        return f'<DetectionLog id={self.id} reg_id={self.reg_id} name={self.name} detected_at={self.detected_at}>'
-
-# Ensure the new detection_logs table exists (safe to call repeatedly).
-try:
-    with app.app_context():
-        db.create_all()
-except Exception:
-    logging.exception('Failed to create detection_logs table at startup')
-
-
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.query(Users).get(int(user_id))
@@ -289,40 +313,74 @@ def start_camera():
 
 # Function to stop the camera
 def stop_camera():
-    global camera
+    global camera, last_detection
     if camera is not None:
         camera.release()
         camera = None
-        # When the stream stops, persist buffered recognition events to the DB
+
         try:
-            with app.app_context():
+            with app.app_context():   # Needed for DetectionLog + DB flush
+                # Flush buffered detections
                 with detection_list_lock:
                     if current_stream_detections:
-                        # Deduplicate by key (reg_id or name) and keep the latest
                         dedup = {}
+
                         for ev in current_stream_detections:
                             key = ev.get('reg_id') or ev.get('name')
                             dt = ev.get('detected_at') or datetime.datetime.utcnow()
-                            # keep the most recent timestamp per key
+
+                            # Keep ONLY latest timestamp
                             if key in dedup:
                                 if dt > dedup[key]['detected_at']:
-                                    dedup[key] = {'reg_id': ev.get('reg_id'), 'name': ev.get('name'), 'detected_at': dt}
+                                    dedup[key] = {
+                                        'reg_id': ev.get('reg_id'),
+                                        'name': ev.get('name'),
+                                        'detected_at': dt
+                                    }
                             else:
-                                dedup[key] = {'reg_id': ev.get('reg_id'), 'name': ev.get('name'), 'detected_at': dt}
+                                dedup[key] = {
+                                    'reg_id': ev.get('reg_id'),
+                                    'name': ev.get('name'),
+                                    'detected_at': dt
+                                }
 
+                        # Write deduped logs
                         for key, info in dedup.items():
                             try:
-                                log = DetectionLog(reg_id=info['reg_id'], name=info['name'], detected_at=info['detected_at'])
+                                log = DetectionLog(
+                                    reg_id=info['reg_id'],
+                                    name=info['name'],
+                                    detected_at=info['detected_at']
+                                )
                                 db.session.add(log)
                             except Exception:
                                 db.session.rollback()
+
                         try:
                             db.session.commit()
                         except Exception:
                             db.session.rollback()
-                        # clear buffer and cache after flushing
+
+                        # Clear caches
                         current_stream_detections.clear()
                         recent_detection_cache.clear()
+
+         
+            if (
+                last_detection.name 
+                and last_detection.name != 'Unknown'
+                and last_detection.reg_id 
+                and last_detection.reg_id != 'N/A'
+            ):
+                update_last_detection(
+                    last_detection.reg_id,
+                    last_detection.name,
+                    last_detection.age
+                )
+                print(f"Saved last detection to DB: {last_detection.name} ({last_detection.reg_id})")
+            else:
+                print(f"Skipped saving detection - invalid: name={last_detection.name}, reg_id={last_detection.reg_id}")
+
         except Exception as e:
             logging.exception('Failed to flush detection buffer on stop_camera: %s', e)
 
@@ -331,9 +389,13 @@ def stop_camera():
 def compare(encodeListKnown, encodeFace):
     matches = face_recognition.compare_faces(encodeListKnown, encodeFace)
     faceDis = face_recognition.face_distance(encodeListKnown, encodeFace)
-    # print("matches", matches)
-    # print("faceDis", faceDis)
     matchIndex = np.argmin(faceDis)
+    
+    # Debug output
+    if len(faceDis) > 0:
+        min_distance = faceDis[matchIndex]
+        print(f"Face comparison - min_distance: {min_distance:.4f}, match found: {matches[matchIndex] if matches else 'No matches'}")
+    
     return matches, faceDis, matchIndex
 
 
@@ -341,7 +403,9 @@ def compare(encodeListKnown, encodeFace):
 def get_data(matches, matchIndex, studentIds):
     if matches[matchIndex]:
         student_id = studentIds[matchIndex]  # ID from face recognition
+        print(f"✓ Face matched: student_id={student_id}")
         return student_id
+    print(f"✗ No face match found. matchIndex={matchIndex}, matches={matches}")
     return None  # Return None if no match found
 
 
@@ -404,14 +468,17 @@ def eveningattendance(name, current_date):
 
 # Function which gets data of identified student from the database
 def mysqlconnect(student_id):
-    # If student_id is None, return None for all values
     if student_id is None:
         return None
 
     try:
         with app.app_context():
+            print(f"\n🔍 Looking up student_id: {student_id} (type: {type(student_id)})")
+            
             # First try to find detailed student data
             student_data = Student_data.query.filter_by(regid=student_id).first()
+            print(f"  Student_data query result: {student_data}")
+            
             if student_data:
                 # If student data is found, extract values
                 id = student_data.id
@@ -419,6 +486,7 @@ def mysqlconnect(student_id):
                 roll_no = student_data.rollno
                 division = student_data.division
                 branch = student_data.branch
+                print(f"  ✓ Found in Student_data: {name}")
                 # student_data may not have age; try Face table for age
                 # Prefer getting age from Users (if registration stored age there),
                 # otherwise fall back to Face.age if present. This avoids relying
@@ -439,8 +507,10 @@ def mysqlconnect(student_id):
             # Fallback: some deployments store registrations in `Users` table
             # (created via the registration flow). If a Users record exists for
             # this reg_id, return the username so the front-end can display it.
+            print(f"  Student_data not found, checking Users table...")
             user = Users.query.filter_by(reg_id=student_id).first()
             if user:
+                print(f"  ✓ Found in Users: {user.username}")
                 # Users may store age directly. As a fallback for roll number
                 # (Attendance.roll_no is NOT NULL) use the user's reg_id so
                 # attendance rows can still be recorded even when
@@ -449,15 +519,20 @@ def mysqlconnect(student_id):
                 roll_fallback = user.reg_id or f"R{user.id}"
                 return None, user.username, roll_fallback, None, None, age_val
 
-            # Not found in either table
+            # Not found in either table - create a fallback entry
+            print(f"  ✗ NOT FOUND in Student_data or Users tables")
+            print(f"  📊 Available Student_data regids: {[s.regid for s in Student_data.query.all()]}")
+            print(f"  📊 Available Users reg_ids: {[u.reg_id for u in Users.query.all()]}")
             return None
     except Exception as e:
-        print("Error:", e)
+        print(f"Error in mysqlconnect: {e}")
+        logging.exception("mysqlconnect failed: %s", e)
         return None
 
 
 # Function which does the face recognition and displaying the video feed
 def gen_frames(camera):
+    global last_detection
     while camera is not None:
         success, frame = camera.read()
         if not success:
@@ -466,11 +541,20 @@ def gen_frames(camera):
         imgS = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
         faceCurFrame = face_recognition.face_locations(imgS)
         encodeCurFrame = face_recognition.face_encodings(imgS, faceCurFrame)
+        
+        # Clear detection at start of frame if no faces detected
+        if len(faceCurFrame) == 0:
+            last_detection = Detection()
 
         for encodeFace, faceLoc in zip(encodeCurFrame, faceCurFrame):
             matches, facedis, matchIndex = compare(encodeListKnown, encodeFace)
             student_id = get_data(matches, matchIndex, studentIds)
             data = mysqlconnect(student_id)
+            # print("data", data)
+            # print("Face distances:", facedis)
+            # print("Matches:", matches)
+            # print("Best match index:", matchIndex)
+
             # mysqlconnect returns (id, name, roll_no, division, branch) or
             # (None, None, None, None, None) when not found. Avoid creating
             # attendance rows with a NULL name which violates DB constraints.
@@ -493,29 +577,31 @@ def gen_frames(camera):
             display_name = name if name else 'Unknown'
             print(display_name)
             # update last_detection so front-end can poll for recognized faces
+            # Only update if we have a valid match (student_id and name are not None)
             try:
-                global last_detection
-                # update the dataclass instance in-place to keep a stable
-                # object reference for any callers
-                last_detection.name = display_name
-                last_detection.reg_id = reg_id if reg_id else 'N/A'
-                last_detection.age = age if age is not None else 'N/A'
-                last_detection.timestamp = datetime.datetime.now().isoformat()
-                # Buffer the recognition event for this stream (persist on stop)
-                try:
-                    key = reg_id or display_name
-                    now_dt = datetime.datetime.utcnow()
-                    # short throttle while streaming to avoid repeated identical
-                    # entries within the same session; final dedupe happens on stop.
-                    THROTTLE_SECS_STREAM = 5
-                    last_seen = recent_detection_cache.get(key)
-                    if key and (last_seen is None or (now_dt - last_seen).total_seconds() > THROTTLE_SECS_STREAM):
-                        with detection_list_lock:
-                            current_stream_detections.append({'reg_id': reg_id if reg_id else None, 'name': display_name, 'detected_at': now_dt})
-                            recent_detection_cache[key] = now_dt
-                except Exception:
-                    # non-fatal; don't let logging break the video loop
-                    pass
+                if student_id and name:
+                    # Valid match found - update last_detection in memory
+                    last_detection.name = display_name
+                    last_detection.reg_id = reg_id if reg_id else 'N/A'
+                    last_detection.age = age if age is not None else 'N/A'
+                    last_detection.timestamp = datetime.datetime.now().isoformat()
+                    try:
+                        key = reg_id or display_name
+                        now_dt = datetime.datetime.utcnow()
+                        # short throttle while streaming to avoid repeated identical
+                        # entries within the same session; final dedupe happens on stop.
+                        THROTTLE_SECS_STREAM = 5
+                        last_seen = recent_detection_cache.get(key)
+                        if key and (last_seen is None or (now_dt - last_seen).total_seconds() > THROTTLE_SECS_STREAM):
+                            with detection_list_lock:
+                                current_stream_detections.append({'reg_id': reg_id if reg_id else None, 'name': display_name, 'detected_at': now_dt})
+                                recent_detection_cache[key] = now_dt
+                    except Exception:
+                        # non-fatal; don't let logging break the video loop
+                        pass
+                else:
+                    # Face detected but not recognized - log this as unrecognized
+                    print(f"Face detected but not recognized: {display_name}")
             except Exception:
                 pass
             y1, x2, y2, x1 = faceLoc
@@ -555,7 +641,9 @@ def gen_frames(camera):
                 t = threading.Thread(
                     target=eveningattendance, args=(name, current_date))
                 t.start()
-
+        # print("Camera:", camera.isOpened())
+        # print("Faces detected:", len(faceCurFrame))
+        # print("Loaded known faces:", len(encodeListKnown))
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
