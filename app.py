@@ -317,35 +317,12 @@ def stop_camera():
     if camera is not None:
         camera.release()
         camera = None
-
-        try:
-            # Flush buffered detections with proper transaction handling
-            with detection_list_lock:
-                if current_stream_detections:
-                    # Create a copy to avoid holding lock during DB operations
-                    detections_to_save = current_stream_detections.copy()
-                    current_stream_detections.clear()
-                    recent_detection_cache.clear()
-                else:
-                    detections_to_save = []
-
-            # Process detections outside the lock
-            if detections_to_save:
-                save_detections_safely(detections_to_save)
-
-            # Save last detection if valid
-            if (
-                last_detection.name 
-                and last_detection.name != 'Unknown'
-                and last_detection.reg_id 
-                and last_detection.reg_id != 'N/A'
-            ):
-                print(f"Saved last detection to DB: {last_detection.name} ({last_detection.reg_id})")
-            else:
-                print(f"Skipped saving detection - invalid: name={last_detection.name}, reg_id={last_detection.reg_id}")
-
-        except Exception as e:
-            logging.exception('Failed to flush detection buffer on stop_camera: %s', e)
+        
+        # Clear detection and caches on stop
+        last_detection = Detection()
+        recent_detection_cache.clear()
+        
+        print("Camera stopped and detection cleared")
 
 def save_detections_safely(detections):
     """Safely save detections to database with proper error handling"""
@@ -631,20 +608,24 @@ def gen_frames(camera):
                     last_detection.reg_id = reg_id if reg_id else 'N/A'
                     last_detection.age = age if age is not None else 'N/A'
                     last_detection.timestamp = datetime.datetime.now().isoformat()
+                    
+                    # Save detection to database ONCE using throttling
+                    # This prevents duplicate entries in the loop
                     try:
                         key = reg_id or display_name
                         now_dt = datetime.datetime.utcnow()
-                        # short throttle while streaming to avoid repeated identical
-                        # entries within the same session; final dedupe happens on stop.
-                        THROTTLE_SECS_STREAM = 5
+                        # Throttle: only save if this person wasn't saved recently
+                        THROTTLE_SECS_STREAM = 5  # Save only once every 5 seconds
                         last_seen = recent_detection_cache.get(key)
+                        
                         if key and (last_seen is None or (now_dt - last_seen).total_seconds() > THROTTLE_SECS_STREAM):
-                            with detection_list_lock:
-                                current_stream_detections.append({'reg_id': reg_id if reg_id else None, 'name': display_name, 'detected_at': now_dt})
-                                recent_detection_cache[key] = now_dt
-                    except Exception:
+                            # Call update_last_detection to save to database ONCE
+                            update_last_detection(reg_id, display_name, age)
+                            recent_detection_cache[key] = now_dt
+                            print(f"✓ Saved detection: {display_name} ({reg_id})")
+                    except Exception as e:
                         # non-fatal; don't let logging break the video loop
-                        pass
+                        logging.exception("Error saving detection: %s", e)
                 else:
                     # Face detected but not recognized - log this as unrecognized
                     print(f"Face detected but not recognized: {display_name}")
@@ -715,22 +696,58 @@ def video1():
         return "Error connecting to the video stream"
 
 
-@app.route('/video2')
+@app.route('/video2', methods=['POST'])
 def video2():
-    try:
-        camera2 = params['camera_index_2']
+    """
+    Route to recognize a face from an uploaded image.
+    """
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file part'})
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'No selected file'})
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+
         try:
-            camera_index = int(camera2)
-        except Exception:
-            camera_index = camera2
-        camera = cv2.VideoCapture(camera_index)
-        if not camera.isOpened():
-            print(f"video2: failed to open camera index {camera_index}")
-            return "Error connecting to the video stream: camera unavailable"
-        return Response(gen_frames(camera), mimetype='multipart/x-mixed-replace; boundary=frame')
-    except Exception as e:
-        print("Error:", e)
-        return "Error connecting to the video stream"
+            # Load the uploaded image file
+            uploaded_image = face_recognition.load_image_file(file_path)
+            uploaded_encoding = face_recognition.face_encodings(uploaded_image)
+
+            if not uploaded_encoding:
+                return jsonify({'success': False, 'message': 'No face detected in the uploaded image.'})
+
+            # Compare the uploaded image encoding with known encodings
+            matches = face_recognition.compare_faces(encodeListKnown, uploaded_encoding[0])
+            face_distances = face_recognition.face_distance(encodeListKnown, uploaded_encoding[0])
+            best_match_index = np.argmin(face_distances)
+
+            if matches[best_match_index]:
+                student_id = studentIds[best_match_index]
+                student_data = Student_data.query.filter_by(regid=student_id).first()
+                if student_data:
+                    # Convert SQLAlchemy object to dictionary for JSON serialization
+                    data_dict = {
+                        'id': student_data.id,
+                        'name': student_data.name,
+                        'roll_no': student_data.rollno,
+                        'division': student_data.division,
+                        'branch': student_data.branch,
+                        'reg_id': student_data.regid
+                    }
+                    return jsonify({'success': True, 'message': 'Face recognized.', 'data': data_dict})
+
+            return jsonify({'success': False, 'message': 'Face not recognized.'})
+        except Exception as e:
+            logging.exception('Error in video2: %s', e)
+            return jsonify({'success': False, 'message': f'Error processing image: {str(e)}'})
+
+    return jsonify({'success': False, 'message': 'Invalid file format.'})
 
 
 @app.route('/last_detection')
@@ -764,7 +781,6 @@ def display_attendance():
     else:
         return 'UnAuthorized access'
 
-# Route to add new students page for admins
 
 
 @app.route('/data')
@@ -1598,7 +1614,7 @@ def index():
     start_camera()
     try:
         # Do not show admin accounts in the main registered-users table
-        users = Users.query.filter(Users.role != 'admin').order_by(Users.username).all()
+        users = Student_data.query.order_by(Student_data.name).all()
     except Exception:
         users = []
     # gather uploaded filenames to show thumbnails

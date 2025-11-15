@@ -2,21 +2,20 @@
 
 {% block content %}
 <div class="row g-4">
-    <div class="col-lg-7">
+    <div class="col-lg-6">
         <div class="card shadow-sm">
             <div class="card-body">
-                <h5 class="card-title">Live Camera Streams</h5>
+                <h5 class="card-title">Live Camera Stream</h5>
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="card-title mb-0">Live Camera Streams</h5>
+                    <h5 class="card-title mb-0">Live Camera Stream</h5>
                     <div>
-                        <button id="startStreams" class="btn btn-sm btn-outline-success" onclick="startStreamAction()">Start Streams</button>
-                        <button id="stopStreams" class="btn btn-sm btn-outline-secondary" onclick="stopStreamAction()">Stop Streams</button>
+                        <button id="startStreams" class="btn btn-sm btn-outline-success" onclick="startStreamAction()">Start</button>
+                        <button id="stopStreams" class="btn btn-sm btn-outline-secondary" onclick="stopStreamAction()">Stop</button>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-12">
-                        <h6>Camera</h6>
                         <div class="ratio ratio-16x9 bg-dark">
                             <!-- Stream will be attached only after user clicks Start Streams -->
                             <img id="cam1" data-src="{{ url_for('video1') }}" alt="Camera" style="width:100%; height:100%; object-fit:cover;">
@@ -33,20 +32,44 @@
         </div>
     </div>
 
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Recognize from Image</h5>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="input-group mb-3">
+                        <input type="file" class="form-control" id="imageFile" name="file" accept="image/*" required onchange="previewImage()">
+                        <button class="btn btn-primary" type="button" onclick="recognizeImage()">Recognize</button>
+                    </div>
+                </form>
+
+                <div id="imagePreviewContainer" class="mb-3" style="display:none;">
+                    <h6>Image Preview:</h6>
+                    <div style="max-height: 300px; overflow: auto;">
+                        <img id="imagePreview" alt="Preview" style="max-width: 100%; height: auto; border-radius: 5px;">
+                    </div>
+                </div>
+
+                <div id="uploadResult" class="mt-2"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="col-lg-5">
         <div class="card shadow-sm">
             <div class="card-body">
                 <h5 class="card-title">Registered Users</h5>
                 <div class="list-group">
                     {% if users %}
+        
                         {% for u in users %}
                             <div class="list-group-item d-flex justify-content-between align-items-center">
                                 <div>
-                                    <strong>{{ u.username }}</strong><br>
-                                    <small class="text-muted">{{ u.reg_id }}</small>
+                                    <strong>{{ u.name }}</strong><br>
+                                    <small class="text-muted">{{ u.regid }}</small>
                                 </div>
                                 <div>
-                                        {% set thumb = (u.reg_id ~ '.jpg') %}
+                                        {% set thumb = (u.regid ~ '.jpg') %}
                                         {% if uploads and (thumb in uploads) %}
                                             <img src="{{ url_for('get_image', filename=thumb) }}" alt="thumb" class="rounded" style="width:48px; height:48px; object-fit:cover;">
                                         {% endif %}
@@ -70,6 +93,64 @@
         // Simple reload helper
         function reloadPage() {
             location.reload();
+        }
+
+        // Preview image when user selects a file
+        function previewImage() {
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            const imagePreview = document.getElementById('imagePreview');
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                previewContainer.style.display = 'none';
+            }
+        }
+
+        // Function to recognize face from uploaded image
+        async function recognizeImage() {
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+            const resultDiv = document.getElementById('uploadResult');
+
+            if (!file) {
+                resultDiv.innerHTML = '<div class="alert alert-warning">Please select an image.</div>';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                resultDiv.innerHTML = '<div class="alert alert-info">Processing...</div>';
+                const response = await fetch('{{ url_for("video2") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    let html = '<div class="alert alert-success"><strong>✓ Face Recognized!</strong><br>';
+                    html += '<strong>Name:</strong> ' + result.data.name + '<br>';
+                    html += '<strong>Roll No:</strong> ' + result.data.roll_no + '<br>';
+                    html += '<strong>Reg ID:</strong> ' + result.data.reg_id + '<br>';
+                    html += '<strong>Branch:</strong> ' + result.data.branch + '</div>';
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.innerHTML = '<div class="alert alert-danger"><strong>✗ ' + result.message + '</strong></div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Error: ' + error.message + '</div>';
+                console.error('Error:', error);
+            }
         }
     </script>
 
