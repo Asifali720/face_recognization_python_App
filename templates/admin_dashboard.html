@@ -41,17 +41,16 @@
             {% endif %}
           </td>
           <td class="text-end">
-            <form action="{{ url_for('admin_set_role', user_id=user.id) }}" method="post" class="d-inline">
-              <div class="input-group input-group-sm" style="width:230px;">
+            <!-- <form action="{{ url_for('admin_set_role', user_id=user.id) }}" method="post" class="d-inline">
+              <div class="input-group input-group-sm" style="width:200px;">
                 <select name="role" class="form-select form-select-sm">
                   <option value="">(no change)</option>
                   <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>admin</option>
-                  <option value="teacher" {% if user.role == 'teacher' %}selected{% endif %}>teacher</option>
                   <option value="student" {% if user.role == 'student' %}selected{% endif %}>student</option>
                 </select>
                 <button class="btn btn-sm btn-primary" type="submit">Set</button>
               </div>
-            </form>
+            </form> -->
             <form action="{{ url_for('admin_delete_user', user_id=user.id) }}" method="post" class="d-inline ms-2">
               <button class="btn btn-sm btn-danger" type="submit" onclick="return confirm('Delete user {{ user.username }}?')">Delete</button>
             </form>
@@ -81,6 +80,102 @@
           <td>{{ s.regid }}</td>
         </tr>
         {% endfor %}
+      </tbody>
+  </table>
+  </div>
+
+  <hr>
+  <h4>Attendance Records</h4>
+  <div class="table-responsive w-100">
+  <table class="table table-sm table-striped table-hover w-100">
+      <thead class="table-dark">
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Date</th>
+          <th>Start Time</th>
+          <th>End Time</th>
+          <th>Roll No</th>
+          <th>Division</th>
+          <th>Branch</th>
+          <th>Reg ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if attendance_records %}
+          {% for record in attendance_records %}
+          <tr>
+            <td>{{ record.id }}</td>
+            <td>{{ record.name }}</td>
+            <td>{{ record.date }}</td>
+            <td>
+              {% if record.start_time %}
+                <span class="badge bg-success">{{ record.start_time }}</span>
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if record.end_time %}
+                <span class="badge bg-info">{{ record.end_time }}</span>
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td>{{ record.roll_no }}</td>
+            <td>{{ record.division }}</td>
+            <td>{{ record.branch }}</td>
+            <td><strong>{{ record.reg_id }}</strong></td>
+          </tr>
+          {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-center text-muted">No attendance records found</td>
+        </tr>
+        {% endif %}
+      </tbody>
+  </table>
+  </div>
+
+  <hr>
+  <h4>Faces Database</h4>
+  <div class="table-responsive w-100">
+  <table class="table table-sm table-striped table-hover w-100">
+      <thead class="table-dark">
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Reg ID</th>
+          <th>Email</th>
+          <th>Image Path</th>
+          <th>Created At</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if faces %}
+          {% for face in faces %}
+          <tr>
+            <td>{{ face.id }}</td>
+            <td>{{ face.name }}</td>
+            <td><strong>{{ face.reg_id }}</strong></td>
+            <td>{{ face.email }}</td>
+            <td>
+              <small class="text-muted">{{ face.image_path }}</small>
+            </td>
+            <td>{{ face.created_at.strftime('%Y-%m-%d %H:%M:%S') if face.created_at else '-' }}</td>
+            <td class="text-center">
+              <form action="{{ url_for('delete_face', face_id=face.id) }}" method="post" class="d-inline">
+                <button class="btn btn-sm btn-danger" type="submit" onclick="return confirm('Delete face record for {{ face.name }}?')">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted">No face records found</td>
+        </tr>
+        {% endif %}
       </tbody>
   </table>
   </div>

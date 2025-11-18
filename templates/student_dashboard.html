@@ -1,21 +1,41 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<div class="mb-3">
+  <a href="{{ url_for('profile') }}" class="btn btn-info">
+    <i class="fas fa-user-cog"></i> Profile Settings
+  </a>
+</div>
+
 <div class="row">
   <div class="col-md-6">
     <div class="card bg-white shadow-sm mb-3">
       <div class="card-body">
         <h3 class="card-title">Your Attendance Dashboard</h3>
-        <p class="card-text">Use the camera below to attempt attendance. Make sure your face is visible to the camera.</p>
+        <p class="card-text">Use the camera below to record your attendance. Make sure your face is visible to the camera.</p>
 
         <div class="text-center mb-3">
-          <!-- video stream -->
-          <img id="video-stream" src="{{ url_for('video1') }}" alt="Live camera" class="img-fluid rounded" style="background:white;" />
+          <!-- video stream - off by default -->
+          <div class="ratio ratio-16x9 bg-dark rounded" style="display: flex; align-items: center; justify-content: center;">
+            <img id="video-stream" alt="Live camera" class="img-fluid rounded" style="display:none; width:100%; height:100%; object-fit:cover;" />
+            <div id="camera-placeholder" class="text-white text-center">
+              <i class="fas fa-camera" style="font-size: 48px; margin-bottom: 10px; display: block;"></i>
+              <p>Camera is OFF. Click "Start Recording" to begin.</p>
+            </div>
+          </div>
         </div>
 
-        <form method="post" action="{{ url_for('student_attempt_attendance') }}">
-          <button type="submit" class="btn btn-primary">Attempt Attendance (by face)</button>
-        </form>
+        <!-- Start and Stop Record Buttons -->
+        <div class="d-grid gap-2 mb-3">
+          <button type="button" class="btn btn-success btn-lg" onclick="startAttendance()">
+            <i class="fas fa-play-circle"></i> Start Recording
+          </button>
+          <button type="button" class="btn btn-danger btn-lg" onclick="stopAttendance()">
+            <i class="fas fa-stop-circle"></i> Stop Recording
+          </button>
+        </div>
+
+        <div id="attendance-status" class="alert alert-info" style="display:none;"></div>
 
         <div id="detected" class="mt-3">
           <h5>Last recognized</h5>
@@ -33,20 +53,42 @@
         <h4 class="card-title">Your Attendance Records</h4>
         {% if attendance_records and attendance_records|length > 0 %}
         <div class="table-responsive">
-        <table class="table table-sm">
-          <thead>
+        <table class="table table-sm table-striped">
+          <thead class="table-dark">
             <tr>
               <th>Date</th>
               <th>Start Time</th>
               <th>End Time</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {% for r in attendance_records %}
             <tr>
-              <td>{{ r.date }}</td>
-              <td>{{ r.start_time or '-' }}</td>
-              <td>{{ r.end_time or '-' }}</td>
+              <td><strong>{{ r.date }}</strong></td>
+              <td>
+                {% if r.start_time %}
+                  <span class="badge bg-success">{{ r.start_time }}</span>
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if r.end_time %}
+                  <span class="badge bg-info">{{ r.end_time }}</span>
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if r.start_time and r.end_time %}
+                  <span class="badge bg-success">Complete</span>
+                {% elif r.start_time %}
+                  <span class="badge bg-warning text-dark">In Progress</span>
+                {% else %}
+                  <span class="badge bg-danger">Absent</span>
+                {% endif %}
+              </td>
             </tr>
             {% endfor %}
           </tbody>
@@ -62,22 +104,133 @@
 
 <script>
 // Poll /last_detection and update the small status area so the student can
-// see what face is currently recognized by the running stream.
-async function pollLastDetection() {
+// Poll for last detection every 1.5 seconds
+let detectionPolling = null;
+let autoSaved = false;  // Flag to prevent duplicate saves
+
+function pollLastDetection() {
+  fetch("{{ url_for('last_detection_route') }}")
+    .then(response => response.json())
+    .then(data => {
+      // Update the Last recognized section
+      if (data.name && data.name !== "Unknown") {
+        document.getElementById('detected-name').textContent = data.name;
+        document.getElementById('detected-reg').textContent = data.reg_id;
+        document.getElementById('detected-time').textContent = data.timestamp;
+        
+        // Auto-save attendance on first detection
+        if (!autoSaved) {
+          autoSaved = true;
+          saveAttendanceOnDetection(data.name, data.reg_id);
+        }
+      }
+    })
+    .catch(error => console.error('Error fetching detection:', error));
+}
+
+// Start Attendance
+async function startAttendance() {
+  // Reset auto-save flag for new session
+  autoSaved = false;
+  
+  // Start the camera - show video stream and hide placeholder
+  const videoStream = document.getElementById('video-stream');
+  const cameraPlaceholder = document.getElementById('camera-placeholder');
+  
+  // Set the video source and show it
+  videoStream.src = "{{ url_for('video1') }}";
+  videoStream.style.display = 'block';
+  cameraPlaceholder.style.display = 'none';
+  
+  // Start polling for face detection
+  if (detectionPolling) clearInterval(detectionPolling);
+  detectionPolling = setInterval(pollLastDetection, 1500);
+
   try {
-  const resp = await fetch("{{ url_for('last_detection_route') }}");
-    if (!resp.ok) return;
-    const data = await resp.json();
-    document.getElementById('detected-name').textContent = data.name || 'N/A';
-    document.getElementById('detected-reg').textContent = data.reg_id || 'N/A';
-    document.getElementById('detected-time').textContent = data.timestamp || '';
-  } catch (e) {
-    // ignore polling errors silently
+    const response = await fetch("{{ url_for('student_start_record') }}", {
+      method: 'POST'
+    });
+    const result = await response.json();
+    
+    const statusDiv = document.getElementById('attendance-status');
+    if (result.success) {
+      statusDiv.className = 'alert alert-info';
+      statusDiv.textContent = '⏹ Recording started - Waiting for face detection...';
+      statusDiv.style.display = 'block';
+    } else {
+      statusDiv.className = 'alert alert-danger';
+      statusDiv.textContent = '✗ ' + result.message;
+      statusDiv.style.display = 'block';
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
   }
 }
-setInterval(pollLastDetection, 1500);
-// initial poll
-pollLastDetection();
+
+// Auto-save attendance when face is detected
+async function saveAttendanceOnDetection(name, reg_id) {
+  try {
+    const response = await fetch("{{ url_for('student_start_record') }}", {
+      method: 'POST'
+    });
+    const result = await response.json();
+    
+    const statusDiv = document.getElementById('attendance-status');
+    if (result.success) {
+      statusDiv.className = 'alert alert-success';
+      statusDiv.textContent = '✓ ' + result.message + ' (Detected: ' + name + ')';
+      statusDiv.style.display = 'block';
+    } else {
+      statusDiv.className = 'alert alert-warning';
+      statusDiv.textContent = '⚠ ' + result.message;
+      statusDiv.style.display = 'block';
+    }
+  } catch (error) {
+    console.error('Auto-save error:', error);
+  }
+}
+
+// Stop Attendance
+async function stopAttendance() {
+  // Stop polling immediately
+  if (detectionPolling) {
+    clearInterval(detectionPolling);
+    detectionPolling = null;
+  }
+  
+  // Turn off camera immediately
+  const videoStream = document.getElementById('video-stream');
+  const cameraPlaceholder = document.getElementById('camera-placeholder');
+  videoStream.src = '';
+  videoStream.style.display = 'none';
+  cameraPlaceholder.style.display = 'block';
+  
+  try {
+    const response = await fetch("{{ url_for('student_stop_record') }}", {
+      method: 'POST'
+    });
+    const result = await response.json();
+    
+    const statusDiv = document.getElementById('attendance-status');
+    if (result.success) {
+      statusDiv.className = 'alert alert-success';
+      statusDiv.textContent = '✓ ' + result.message + ' (Stopped at: ' + result.time + ')';
+      statusDiv.style.display = 'block';
+      
+      // Refresh page after 2 seconds to show updated records
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      statusDiv.className = 'alert alert-danger';
+      statusDiv.textContent = '✗ ' + result.message;
+      statusDiv.style.display = 'block';
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+}
 </script>
+
+<!-- Add Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 {% endblock %}

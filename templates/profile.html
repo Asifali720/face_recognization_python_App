@@ -1,66 +1,204 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends 'base.html' %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <title>Document</title>
-</head>
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <!-- Profile Card -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-user-circle"></i> Profile Information
+                    </h5>
+                    <hr>
+                    
+                    <div class="profile-info">
+                        <div class="mb-3">
+                            <small class="text-muted">Username</small>
+                            <p class="mb-2"><strong>{{ user.username }}</strong></p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <small class="text-muted">Registration ID</small>
+                            <p class="mb-2"><strong>{{ user.reg_id }}</strong></p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <small class="text-muted">Role</small>
+                            <p class="mb-2">
+                                <span class="badge bg-{% if user.role == 'student' %}info{% elif user.role == 'teacher' %}warning{% else %}danger{% endif %}">
+                                    {{ user.role | title }}
+                                </span>
+                            </p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <small class="text-muted">Email</small>
+                            <p class="mb-2"><strong>{{ user.email or 'Not set' }}</strong></p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <small class="text-muted">Age</small>
+                            <p class="mb-2"><strong>{{ user.age or 'Not set' }}</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-<body>
-    <div class="container">
-        <!-- Profile Section -->
-        <div class="profile-section">
-            <h2>Profile</h2>
-            <p><strong>Username:</strong> {{ current_user.username }}</p>
-            <p><strong>Role:</strong> {{ current_user.role }}</p>
-            <p><strong>RegID:</strong> {{ current_user.reg_id }}</p>
-            <p><strong>Total no of attendance:</strong> {{ no_of_attendance }}</p>
-            <!-- Add more user information here as needed -->
+            <!-- Edit Profile Card -->
+            <div class="card shadow-sm mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-edit"></i> Edit Profile
+                    </h5>
+                    <hr>
+                    
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="{{ user.email or '' }}" placeholder="Enter email">
+                            <small class="text-muted">Optional</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="age" class="form-label">Age</label>
+                            <input type="number" class="form-control" id="age" name="age" 
+                                   value="{{ user.age or '' }}" placeholder="Enter age" min="1" max="120">
+                            <small class="text-muted">Optional</small>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
 
-        <!-- Table Section -->
-        <div class="table-section">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Start Time</th>
-                        <th>End Time</th>
-                        <th>Date</th>
-                        <th>Roll No</th>
-                        <th>Division</th>
-                        <th>Branch</th>
-                        <th>Registration No</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for record in data %}
-                    <tr>
-                        <td><b>{{ record.name }}</b></td>
-                        <td><b>{{ record.start_time }}</b></td>
-                        <td><b>{{ record.end_time }}</b></td>
-                        <td><b>{{ record.date }}</b></td>
-                        <td><b>{{ record.roll_no }}</b></td>
-                        <td><b>{{ record.division }}</b></td>
-                        <td><b>{{ record.branch }}</b></td>
-                        <td><b>{{ record.reg_id }}</b></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <!-- Content Area -->
+        <div class="col-lg-8">
+            {% if role == 'student' %}
+            <!-- Student Attendance Section -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-calendar-check"></i> My Attendance Records
+                    </h5>
+                    <hr>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <strong>Total Attendance:</strong> {{ no_of_attendance }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if attendance_data %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in attendance_data %}
+                                <tr>
+                                    <td><strong>{{ record.date }}</strong></td>
+                                    <td>
+                                        {% if record.start_time %}
+                                            <span class="badge bg-success">{{ record.start_time }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if record.end_time %}
+                                            <span class="badge bg-info">{{ record.end_time }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if record.start_time and record.end_time %}
+                                            <span class="badge bg-success">Complete</span>
+                                        {% elif record.start_time %}
+                                            <span class="badge bg-warning">In Progress</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Absent</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle"></i> No attendance records found.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% elif role == 'teacher' %}
+            <!-- Teacher/Professor Dashboard Section -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-chalkboard-user"></i> Teacher Dashboard
+                    </h5>
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="alert alert-primary">
+                                <h6>Students Tracked</h6>
+                                <h3 class="mb-0">{{ assigned_students }}</h3>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="alert alert-success">
+                                <h6>System Status</h6>
+                                <h3 class="mb-0">
+                                    <i class="fas fa-check-circle"></i> Active
+                                </h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h6>Quick Actions</h6>
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('get_attendance') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-search"></i> View Attendance Records
+                            </a>
+                            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-chart-bar"></i> View Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
-    <form action="{{url_for('display_attendance')}}">
-        <button type="submit">Back</button>
-    </form>
-</body>
-{% if error %}
-<script>
-    // Display an alert with the error message
-    alert("{{ error|safe }}");
-</script>
-{% endif %}
 
-</html>
+    <!-- Back Button -->
+    <div class="mt-4 mb-4">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Home
+        </a>
+    </div>
+</div>
+
+<!-- Add Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+{% endblock %}

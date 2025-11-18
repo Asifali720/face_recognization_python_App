@@ -119,52 +119,12 @@ class Face(db.Model):
         return f'<Face id={self.id} reg_id={self.reg_id} name={self.name}>'
 
 
-class DetectionLog(db.Model):
-    __tablename__ = 'detection_logs'
-    id = db.Column(db.Integer, primary_key=True)
-    reg_id = db.Column(db.String(50))
-    name = db.Column(db.String(200))
-    detected_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-
-    def __repr__(self):
-        return f'<DetectionLog id={self.id} reg_id={self.reg_id} name={self.name} detected_at={self.detected_at}>'
-
-
 # random reg id func utility
 def generate_unique_reg_id():
     while True:
         reg_id = random.randint(1000, 9999)
         if not Users.query.filter_by(reg_id=str(reg_id)).first():
             return str(reg_id)
-
-def update_last_detection(reg_id, name, age):
-    """Update detection log in database within app context"""
-    try:
-        with app.app_context():
-            try:
-                # Try to find the most recent detection log
-                record = DetectionLog.query.order_by(DetectionLog.detected_at.desc()).first()
-                
-                if not record:
-                    record = DetectionLog()
-                else:
-                    # Create a new record instead of updating the old one
-                    record = DetectionLog()
-                
-                record.reg_id = reg_id
-                record.name = name
-                record.detected_at = datetime.datetime.utcnow()
-                
-                db.session.add(record)
-                db.session.commit()
-                print(f"Last detection updated in DB: {name} ({reg_id})")
-            except Exception as db_error:
-                db.session.rollback()
-                print(f"Database error updating last detection: {db_error}")
-                logging.exception("Failed to update detection log: %s", db_error)
-    except Exception as e:
-        print(f"Error updating last detection: {e}")
-        logging.exception("Error in update_last_detection: %s", e)
 
 
 # Ensure the users table has an `email` column. If the column is missing, try
@@ -323,99 +283,6 @@ def stop_camera():
         recent_detection_cache.clear()
         
         print("Camera stopped and detection cleared")
-
-def save_detections_safely(detections):
-    """Safely save detections to database with proper error handling"""
-    if not detections:
-        return
-    
-    # Deduplicate by latest timestamp
-    dedup = {}
-    for ev in detections:
-        key = ev.get('reg_id') or ev.get('name')
-        dt = ev.get('detected_at') or datetime.datetime.utcnow()
-
-        if key in dedup:
-            if dt > dedup[key]['detected_at']:
-                dedup[key] = {
-                    'reg_id': ev.get('reg_id'),
-                    'name': ev.get('name'),
-                    'detected_at': dt
-                }
-        else:
-            dedup[key] = {
-                'reg_id': ev.get('reg_id'),
-                'name': ev.get('name'),
-                'detected_at': dt
-            }
-
-    # Save each detection with individual transaction
-    successful_saves = 0
-    for key, info in dedup.items():
-        try:
-            # Use individual transactions for each detection
-            with app.app_context():
-                log = DetectionLog(
-                    reg_id=info['reg_id'],
-                    name=info['name'],
-                    detected_at=info['detected_at']
-                )
-                db.session.add(log)
-                db.session.commit()
-                successful_saves += 1
-                print(f"Saved detection log: {info['name']} ({info['reg_id']})")
-                
-        except Exception as e:
-            # Rollback and log error, but continue with other detections
-            db.session.rollback()
-            logging.error(f"Failed to save detection log for {info['name']}: {str(e)}")
-            continue
-
-    print(f"Successfully saved {successful_saves}/{len(dedup)} detection logs")
-
-# Alternative: Batch save with single transaction (faster but all-or-nothing)
-def save_detections_batch(detections):
-    """Save all detections in a single transaction"""
-    if not detections:
-        return
-    
-    dedup = {}
-    for ev in detections:
-        key = ev.get('reg_id') or ev.get('name')
-        dt = ev.get('detected_at') or datetime.datetime.utcnow()
-
-        if key in dedup:
-            if dt > dedup[key]['detected_at']:
-                dedup[key] = {
-                    'reg_id': ev.get('reg_id'),
-                    'name': ev.get('name'),
-                    'detected_at': dt
-                }
-        else:
-            dedup[key] = {
-                'reg_id': ev.get('reg_id'),
-                'name': ev.get('name'),
-                'detected_at': dt
-            }
-
-    try:
-        with app.app_context():
-            for key, info in dedup.items():
-                log = DetectionLog(
-                    reg_id=info['reg_id'],
-                    name=info['name'],
-                    detected_at=info['detected_at']
-                )
-                db.session.add(log)
-            
-            db.session.commit()
-            print(f"Successfully saved {len(dedup)} detection logs in batch")
-            
-    except Exception as e:
-        db.session.rollback()
-        logging.error(f"Batch save of detection logs failed: {str(e)}")
-        # Optionally retry individual saves here
-        save_detections_safely(list(dedup.values()))
 
 # Function for comparing incoming face with encoded file
 def compare(encodeListKnown, encodeFace):
@@ -608,24 +475,7 @@ def gen_frames(camera):
                     last_detection.reg_id = reg_id if reg_id else 'N/A'
                     last_detection.age = age if age is not None else 'N/A'
                     last_detection.timestamp = datetime.datetime.now().isoformat()
-                    
-                    # Save detection to database ONCE using throttling
-                    # This prevents duplicate entries in the loop
-                    try:
-                        key = reg_id or display_name
-                        now_dt = datetime.datetime.utcnow()
-                        # Throttle: only save if this person wasn't saved recently
-                        THROTTLE_SECS_STREAM = 5  # Save only once every 5 seconds
-                        last_seen = recent_detection_cache.get(key)
-                        
-                        if key and (last_seen is None or (now_dt - last_seen).total_seconds() > THROTTLE_SECS_STREAM):
-                            # Call update_last_detection to save to database ONCE
-                            update_last_detection(reg_id, display_name, age)
-                            recent_detection_cache[key] = now_dt
-                            print(f"✓ Saved detection: {display_name} ({reg_id})")
-                    except Exception as e:
-                        # non-fatal; don't let logging break the video loop
-                        logging.exception("Error saving detection: %s", e)
+                    print(f"✓ Face detected: {display_name} ({reg_id})")
                 else:
                     # Face detected but not recognized - log this as unrecognized
                     print(f"Face detected but not recognized: {display_name}")
@@ -848,80 +698,6 @@ def add_user():
             return redirect(request.url)
 
 
-@app.route('/get_attendance', methods=['GET'])
-@login_required
-def get_attendance():
-    if current_user.role == 'teacher':
-        stop_camera()
-        query_parameters = {}
-        for key, value in request.args.items():
-            if value:
-                query_parameters[key] = value
-
-        if query_parameters:
-            attendance_records = Attendance.query.filter_by(
-                **query_parameters).order_by(asc(Attendance.reg_id)).all()
-
-            if not attendance_records:
-                flash("No records available for the specified criteria")
-        else:
-            flash("No parameters provided for query")
-            attendance_records = []  # Assign an empty list to avoid undefined variable error
-
-        return render_template('results.html', attendance_records=attendance_records)
-    else:
-        return 'UnAuthorized access'
-
-# Function to download the attendance of particular date in cvs format
-
-
-@app.route('/download_attendance_csv', methods=['POST'])
-def download_attendance_csv():
-    try:
-        # Assuming the date is submitted via a form
-        date = request.form.get('date')
-        if not date:
-            flash("Date not provided for downloading.")
-            return redirect(url_for('get_attendance'))
-
-        # Retrieve attendance records for the specified date
-        attendance_records = Attendance.query.filter_by(date=date).all()
-
-        if not attendance_records:
-            flash("No attendance records found for the specified date.")
-            return redirect(url_for('get_attendance'))
-
-        # Create a CSV string
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['Name', 'Start Time', 'End Time', 'Date',
-                        'Roll Number', 'Division', 'Branch', 'Registration ID'])
-        for record in attendance_records:
-            writer.writerow([record.name, record.start_time, record.end_time, record.date,
-                            record.roll_no, record.division, record.branch, record.reg_id])
-
-        # Save CSV file to a specified folder
-        folder_path = 'downloads'
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-
-        file_path = os.path.join(folder_path, f"attendance_records_{date}.csv")
-        with open(file_path, 'w') as f:
-            # Remove trailing newline characters
-            f.write(output.getvalue().strip())
-
-        flash("Attendance records downloaded successfully.")
-        error_message = 'Attendance records downloaded successfully.'
-        return render_template('results.html', error=error_message)
-    except Exception as e:
-        logging.exception(
-            "Error occurred while generating CSV file: %s", str(e))
-        flash("An error occurred while generating CSV file.")
-        error_message = 'An error occurred while generating CSV file.'
-        return render_template('results.html', error=error_message)
-
-
-# Route to registration page for viewing the attendance
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     stop_camera()
@@ -932,7 +708,8 @@ def register():
         # reg_id = request.form['reg_id']
         password = request.form['password']
         age = request.form['age']
-        role = request.form['role']
+        # Default role to 'student' since role field is commented out in form
+        role = request.form.get('role', 'student')
         hashed_pass = bcrypt.generate_password_hash(password).decode('utf-8')
         # Check if username or reg_id already exists
         existing_user = Users.query.filter_by(username=username).first()
@@ -951,7 +728,7 @@ def register():
                 email = request.form.get('email')
                 captured_dataurl = request.form.get('captured_image')
                 age = request.form.get('age')
-                role = request.form.get('role')
+                # role = request.form.get('role')
 
                 # Normalize age to integer if possible
                 try:
@@ -969,10 +746,7 @@ def register():
                 if not age:
                     error = 'Age is required.'
                     return render_template('register.html', error=error)
-                if role == "student":
-                     new_student = Student_data(name=username, rollno=random.randint(0, 99),
-                                                division="N/A", branch="N/A", regid=main_reg_id)
-                     db.session.add(new_student)
+                    
                 # helper to decode dataurl -> bytes
                 def dataurl_to_bytes(dataurl):
                     header, encoded = dataurl.split(',', 1)
@@ -1052,10 +826,13 @@ def register():
                 # write bytes to file
                 with open(uploaded_path, 'wb') as f:
                     f.write(captured_bytes)
+                new_student = Student_data(name=username, rollno=random.randint(0, 99),
+                                                division="TE2", branch="ECS", regid=main_reg_id)
+                db.session.add(new_student)
 
                 # Create new user in DB (commit with rollback on failure)
                 new_user = Users(username=username, reg_id=reg_id,
-                                 password=hashed_pass, role=role, age=age_int, email=email)
+                                 password=hashed_pass, role="student", age=age_int, email=email)
                 db.session.add(new_user)
                 try:
                     db.session.commit()
@@ -1172,12 +949,12 @@ def login():
                 if user.role == 'admin':
                     flash(error_message, 'success')
                     return redirect(url_for('admin_dashboard'))
-                elif user.role == 'teacher':
-                    flash(error_message, 'success')
-                    return render_template('results.html', error=error_message)
                 elif user.role == 'student':
                     flash(error_message, 'success')
                     return redirect(url_for('student_dashboard'))
+                else:
+                    # For any other role, redirect to index
+                    return redirect(url_for('index'))
             else:
                 error_message = 'Incorrect username or password. Please try again.',
                 flash('Incorrect username or password. Please try again.', 'error')
@@ -1314,10 +1091,6 @@ def faces():
         face_list = Face.query.order_by(Face.created_at.desc()).all()
     except Exception:
         face_list = []
-    try:
-        detection_logs = DetectionLog.query.order_by(DetectionLog.detected_at.desc()).limit(50).all()
-    except Exception:
-        detection_logs = []
     # Faces page removed — redirect to admin dashboard
     flash('Faces page is no longer available.', 'info')
     return redirect(url_for('admin_dashboard'))
@@ -1326,7 +1099,7 @@ def faces():
 @app.route('/admin_dashboard')
 @login_required
 def admin_dashboard():
-    # admin-only page to manage users, teachers, students
+    # admin-only page to manage users, students
     if current_user.role != 'admin':
         return 'UnAuthorized access'
     try:
@@ -1338,10 +1111,15 @@ def admin_dashboard():
     except Exception:
         students = []
     try:
+        attendance_records = Attendance.query.order_by(Attendance.date.desc(), Attendance.id.desc()).all()
+    except Exception:
+        attendance_records = []
+    try:
         faces = Face.query.order_by(Face.created_at.desc()).all()
     except Exception:
         faces = []
-    return render_template('admin_dashboard.html', users=users, students=students, faces=faces)
+    return render_template('admin_dashboard.html', users=users, students=students, 
+                         attendance_records=attendance_records, faces=faces)
 
 
 @app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
@@ -1374,7 +1152,7 @@ def admin_set_role(user_id):
     if current_user.role != 'admin':
         return 'UnAuthorized access'
     new_role = request.form.get('role')
-    if new_role not in (None, 'admin', 'teacher', 'student'):
+    if new_role not in (None, 'admin', 'student'):
         flash('Invalid role', 'error')
         return redirect(url_for('admin_dashboard'))
     try:
@@ -1481,12 +1259,66 @@ def delete_face(face_id):
 
 
 @app.route('/profile', methods=['GET', 'POST'])
+@login_required
 def profile():
+    """Profile page for both students and teachers (professors)"""
+    
+    if request.method == 'POST':
+        # Handle profile update
+        try:
+            email = request.form.get('email', '').strip()
+            age = request.form.get('age', '').strip()
+            
+            # Validate email
+            if email and '@' not in email:
+                flash('Invalid email address', 'error')
+                return redirect(url_for('profile'))
+            
+            # Validate age
+            if age:
+                try:
+                    age_int = int(age)
+                    if age_int < 1 or age_int > 120:
+                        flash('Age must be between 1 and 120', 'error')
+                        return redirect(url_for('profile'))
+                except ValueError:
+                    flash('Age must be a number', 'error')
+                    return redirect(url_for('profile'))
+            else:
+                age_int = None
+            
+            # Update user
+            current_user.email = email if email else None
+            current_user.age = age_int
+            db.session.commit()
+            flash('Profile updated successfully!', 'success')
+            
+        except Exception as e:
+            db.session.rollback()
+            logging.exception('Error updating profile: %s', e)
+            flash('Error updating profile. Please try again.', 'error')
+        
+        return redirect(url_for('profile'))
+    
+    # GET request - display profile
     if current_user.role == 'student':
-        name = session['username']
-        data = Attendance.query.filter_by(name=name).all()
-        no_of_attendance = len(data)
-        return render_template('profile.html', data=data, no_of_attendance=no_of_attendance)
+        # Student profile with attendance data
+        try:
+            attendance_data = Attendance.query.filter_by(reg_id=current_user.reg_id).all()
+            no_of_attendance = len(attendance_data)
+        except Exception:
+            attendance_data = []
+            no_of_attendance = 0
+        
+        return render_template('profile.html', 
+                             user=current_user,
+                             attendance_data=attendance_data,
+                             no_of_attendance=no_of_attendance,
+                             role='student')
+    
+    else:
+        flash('Unauthorized access', 'error')
+        return redirect(url_for('index'))
 
 
 # Student dashboard: shows personal attendance and allows the student to attempt
@@ -1514,98 +1346,123 @@ def student_dashboard():
     return render_template('student_dashboard.html', attendance_records=attendance_records, last_detection=detection_snapshot)
 
 
-@app.route('/student_attempt_attendance', methods=['POST'])
+@app.route('/student_start_record', methods=['POST'])
 @login_required
-def student_attempt_attendance():
-    # Endpoint called when a student clicks "Attempt Attendance" on their dashboard.
+def student_start_record():
+    """Start attendance recording for the day"""
     if current_user.role != 'student':
-        return ('UnAuthorized access', 403)
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
 
     try:
+        # Check if we're in morning hours (before evening time)
+        if not morn_attendance:
+            return jsonify({'success': False, 'message': 'Start attendance only available during morning hours (9 AM - 7 PM).'})
+
         detected = last_detection
         detected_reg = getattr(detected, 'reg_id', None)
-        # normalize common placeholders
+        
         if not detected_reg or detected_reg in ('N/A', ''):
-            flash('No face currently recognized. Please open the camera and show your face.', 'warning')
-            return redirect(url_for('student_dashboard'))
+            return jsonify({'success': False, 'message': 'No face currently recognized. Please show your face to the camera.'})
 
-        # Ensure the detected reg_id matches the logged-in student
         if str(detected_reg) != str(current_user.reg_id):
-            flash('The recognized face does not match your account. Please try again.', 'error')
-            return redirect(url_for('student_dashboard'))
+            return jsonify({'success': False, 'message': 'The recognized face does not match your account.'})
 
-        # Lookup student details (name, roll_no, division, branch)
         student_info = mysqlconnect(current_user.reg_id)
         if not student_info:
-            flash('Could not find your student details. Contact administrator.', 'error')
-            return redirect(url_for('student_dashboard'))
+            return jsonify({'success': False, 'message': 'Could not find your student details.'})
 
         _, name, roll_no, division, branch, _ = student_info
         if not roll_no:
-            flash('Your roll number is missing in the system. Contact administrator.', 'error')
-            return redirect(url_for('student_dashboard'))
+            return jsonify({'success': False, 'message': 'Your roll number is missing in the system.'})
 
         current_date = datetime.datetime.now().date()
 
-        # Perform the attendance write synchronously so the dashboard shows it immediately.
         with app.app_context():
-            if morn_attendance:
-                # morning: create new attendance row if not already present
-                existing_entry = Attendance.query.filter(
-                    Attendance.name == name,
-                    Attendance.date == current_date,
-                    Attendance.start_time != None
-                ).first()
-                if existing_entry:
-                    flash('Morning attendance already recorded for today.', 'info')
-                else:
-                    try:
-                        new_attendance = Attendance(
-                            name=name,
-                            start_time=datetime.datetime.now().strftime("%H:%M:%S"),
-                            date=current_date,
-                            roll_no=roll_no,
-                            division=division,
-                            branch=branch,
-                            reg_id=current_user.reg_id
-                        )
-                        db.session.add(new_attendance)
-                        db.session.commit()
-                        flash('Morning attendance recorded successfully.', 'success')
-                    except Exception:
-                        db.session.rollback()
-                        logging.exception('Failed to record morning attendance')
-                        flash('Failed to record attendance. Try again or contact admin.', 'error')
-            else:
-                # evening: update end_time on existing row which has start_time
-                existing_entry = Attendance.query.filter(
-                    Attendance.name == name,
-                    Attendance.date == current_date,
-                    Attendance.start_time != None
-                ).first()
-                start_camera()
-                if existing_entry:
-                    if existing_entry.end_time:
-                        flash('Evening attendance already recorded.', 'info')
-                    else:
-                        try:
-                            existing_entry.end_time = datetime.datetime.now().strftime("%H:%M:%S")
-                            db.session.add(existing_entry)
-                            db.session.commit()
-                            flash('Evening attendance recorded successfully.', 'success')
-                        except Exception:
-                            db.session.rollback()
-                            logging.exception('Failed to record evening attendance')
-                            flash('Failed to record attendance. Try again or contact admin.', 'error')
-                else:
-                    flash('No existing morning attendance found to update for evening.', 'warning')
-        start_camera()
-        return redirect(url_for('student_dashboard'))
-   
+            # Check if attendance already started today
+            existing_entry = Attendance.query.filter(
+                Attendance.reg_id == current_user.reg_id,
+                Attendance.date == current_date,
+                Attendance.start_time != None
+            ).first()
+
+            if existing_entry:
+                return jsonify({'success': False, 'message': 'Attendance already started today.'})
+
+            # Create new attendance record with start time
+            try:
+                new_attendance = Attendance(
+                    name=name,
+                    start_time=datetime.datetime.now().strftime("%H:%M:%S"),
+                    date=current_date,
+                    roll_no=roll_no,
+                    division=division,
+                    branch=branch,
+                    reg_id=current_user.reg_id
+                )
+                db.session.add(new_attendance)
+                db.session.commit()
+                return jsonify({'success': True, 'message': 'Attendance recording started successfully!', 'time': new_attendance.start_time})
+            except Exception as e:
+                db.session.rollback()
+                logging.exception('Failed to start attendance: %s', e)
+                return jsonify({'success': False, 'message': 'Failed to start attendance recording.'})
+
     except Exception as e:
-        logging.exception('student_attempt_attendance failed: %s', e)
-        flash('An internal error occurred while attempting attendance.', 'error')
-        return redirect(url_for('student_dashboard'))
+        logging.exception('student_start_record failed: %s', e)
+        return jsonify({'success': False, 'message': 'An error occurred.'})
+
+
+@app.route('/student_stop_record', methods=['POST'])
+@login_required
+def student_stop_record():
+    """Stop attendance recording for the day (mark end time)"""
+    if current_user.role != 'student':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+
+    try:
+        # Check if we're in evening hours (after morning time)
+        if not even_attendance:
+            return jsonify({'success': False, 'message': 'Stop attendance only available during evening hours (7 PM - 9 AM).'})
+
+        detected = last_detection
+        detected_reg = getattr(detected, 'reg_id', None)
+        
+        if not detected_reg or detected_reg in ('N/A', ''):
+            return jsonify({'success': False, 'message': 'No face currently recognized. Please show your face to the camera.'})
+
+        if str(detected_reg) != str(current_user.reg_id):
+            return jsonify({'success': False, 'message': 'The recognized face does not match your account.'})
+
+        current_date = datetime.datetime.now().date()
+
+        with app.app_context():
+            # Find today's attendance record
+            attendance_record = Attendance.query.filter(
+                Attendance.reg_id == current_user.reg_id,
+                Attendance.date == current_date,
+                Attendance.start_time != None
+            ).first()
+
+            if not attendance_record:
+                return jsonify({'success': False, 'message': 'No attendance recording found for today. Start recording first.'})
+
+            if attendance_record.end_time:
+                return jsonify({'success': False, 'message': 'Attendance already stopped today.'})
+
+            # Update with end time
+            try:
+                attendance_record.end_time = datetime.datetime.now().strftime("%H:%M:%S")
+                db.session.add(attendance_record)
+                db.session.commit()
+                return jsonify({'success': True, 'message': 'Attendance recording stopped successfully!', 'time': attendance_record.end_time})
+            except Exception as e:
+                db.session.rollback()
+                logging.exception('Failed to stop attendance: %s', e)
+                return jsonify({'success': False, 'message': 'Failed to stop attendance recording.'})
+
+    except Exception as e:
+        logging.exception('student_stop_record failed: %s', e)
+        return jsonify({'success': False, 'message': 'An error occurred.'})
 
 
 # Route to the index page where the camera feed is displayed

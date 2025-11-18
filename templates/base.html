@@ -7,6 +7,7 @@
     <title>Face Attendance</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
@@ -20,9 +21,37 @@
             </button>
             <div class="collapse navbar-collapse" id="navmenu">
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Home</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('register') }}">Register</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">Login</a></li>
+                    {% if current_user.is_authenticated %}
+                        <!-- Dashboard button for logged-in users -->
+                        <li class="nav-item">
+                            {% if current_user.role == 'student' %}
+                                <a class="nav-link btn btn-white text-primary ms-2" href="{{ url_for('student_dashboard') }}" style="background-color: white; color: #0d6efd !important;">
+                                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                                </a>
+                            {% elif current_user.role == 'teacher' %}
+                                <a class="nav-link btn btn-white text-primary ms-2" href="{{ url_for('get_attendance') }}" style="background-color: white; color: #0d6efd !important;">
+                                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                                </a>
+                            {% elif current_user.role == 'admin' %}
+                                <a class="nav-link btn btn-white text-primary ms-2" href="{{ url_for('admin_dashboard') }}" style="background-color: white; color: #0d6efd !important;">
+                                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                                </a>
+                            {% endif %}
+                        </li>
+                        
+                        <!-- Logout button -->
+                        <li class="nav-item">
+                            <form method="post" action="{{ url_for('logout') }}" class="d-inline">
+                                <button type="submit" class="nav-link btn btn-danger text-white ms-2" style="border: none; cursor: pointer;">
+                                    <i class="fas fa-sign-out-alt"></i> Logout
+                                </button>
+                            </form>
+                        </li>
+                    {% else %}
+                        <!-- Show Register and Login when not authenticated -->
+                        <li class="nav-item"><a class="nav-link" href="{{ url_for('register') }}">Register</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">Login</a></li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
