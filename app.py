@@ -1258,6 +1258,71 @@ def delete_face(face_id):
     return redirect(url_for('admin_dashboard'))
 
 
+@app.route('/download/students', methods=['GET'])
+@login_required
+def download_students_csv():
+    if current_user.role != 'admin':
+        return 'UnAuthorized access'
+    try:
+        students = Student_data.query.order_by(Student_data.name).all()
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['ID', 'Name', 'Roll No', 'Division', 'Branch', 'Reg ID'])
+        for student in students:
+            writer.writerow([student.id, student.name, student.rollno, student.division, student.branch, student.regid])
+        output.seek(0)
+        return Response(output.getvalue(), mimetype='text/csv',
+                       headers={'Content-Disposition': 'attachment; filename=students.csv'})
+    except Exception as e:
+        logging.exception('Error downloading students CSV: %s', e)
+        flash('Error downloading CSV', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/download/attendance', methods=['GET'])
+@login_required
+def download_attendance_csv():
+    if current_user.role != 'admin':
+        return 'UnAuthorized access'
+    try:
+        attendance_records = Attendance.query.order_by(Attendance.date.desc(), Attendance.id.desc()).all()
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['ID', 'Name', 'Date', 'Start Time', 'End Time', 'Roll No', 'Division', 'Branch', 'Reg ID'])
+        for record in attendance_records:
+            writer.writerow([record.id, record.name, record.date, record.start_time or '', record.end_time or '', 
+                           record.roll_no, record.division or '', record.branch or '', record.reg_id or ''])
+        output.seek(0)
+        return Response(output.getvalue(), mimetype='text/csv',
+                       headers={'Content-Disposition': 'attachment; filename=attendance_records.csv'})
+    except Exception as e:
+        logging.exception('Error downloading attendance CSV: %s', e)
+        flash('Error downloading CSV', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/download/faces', methods=['GET'])
+@login_required
+def download_faces_csv():
+    if current_user.role != 'admin':
+        return 'UnAuthorized access'
+    try:
+        faces = Face.query.order_by(Face.created_at.desc()).all()
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['ID', 'Name', 'Reg ID', 'Email', 'Image Path', 'Created At'])
+        for face in faces:
+            created_at = face.created_at.strftime('%Y-%m-%d %H:%M:%S') if face.created_at else ''
+            writer.writerow([face.id, face.name or '', face.reg_id or '', face.email or '', face.image_path or '', created_at])
+        output.seek(0)
+        return Response(output.getvalue(), mimetype='text/csv',
+                       headers={'Content-Disposition': 'attachment; filename=faces.csv'})
+    except Exception as e:
+        logging.exception('Error downloading faces CSV: %s', e)
+        flash('Error downloading CSV', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
