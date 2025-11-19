@@ -5,10 +5,7 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #eef2f6;
-    background-image: url('../images/back.jpg');
-    background-size: cover;
-    background-position: center center;
+    background: linear-gradient(135deg, #000000, #240046, #4b0283);
 }
 
 /* General styles for forms and tables */
@@ -181,3 +178,19 @@ tbody tr {
 /* Small utility helpers */
 .text-muted { color: #6b7280; }
 .card-centered { max-width: 520px; margin: 40px auto; }
+
+
+.animated-underline::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  height: 2px;
+  background-color: white;
+  transition: width 0.3s ease;
+}
+
+.animated-underline:hover::before {
+  width: 100%;
+}

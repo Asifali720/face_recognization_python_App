@@ -1,93 +1,293 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row g-4">
-    <div class="col-lg-6">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Live Camera Stream</h5>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h5 class="card-title mb-0">Live Camera Stream</h5>
-                    <div>
-                        <button id="startStreams" class="btn btn-sm btn-outline-success" onclick="startStreamAction()">Start</button>
-                        <button id="stopStreams" class="btn btn-sm btn-outline-secondary" onclick="stopStreamAction()">Stop</button>
-                    </div>
-                </div>
 
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="ratio ratio-16x9 bg-dark">
-                            <!-- Stream will be attached only after user clicks Start Streams -->
-                            <img id="cam1" data-src="{{ url_for('video1') }}" alt="Camera" style="width:100%; height:100%; object-fit:cover;">
+<style>
+    .card {
+    background-color: var(--card-dark);
+    color: var(--text-light);
+    border-radius: 12px;
+    border: 1px solid var(--primary-color);
+    box-shadow: var(--shadow-purple);
+    transition: transform 0.3s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-5px); /* Hover effect */
+}
+
+.card-title {
+    color: var(--primary-color);
+    font-weight: 700 !important;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+}
+
+/* Customizing Bootstrap Buttons */
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    transition: all 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: #7d26da;
+    border-color: #7d26da;
+    box-shadow: 0 0 10px var(--primary-color);
+}
+
+.btn-success {
+    background-color: #00b894; /* Brighter Green for "Start" */
+    border-color: #00b894;
+}
+
+.btn-success:hover {
+    background-color: #00e6a8;
+    border-color: #00e6a8;
+}
+
+/* Stream and Image Area Styling */
+.ratio-16x9 {
+    background-color: #000000; /* Pure Black for video feed */
+    border: 2px solid var(--primary-color);
+    border-radius: 8px !important;
+}
+
+/* Last Detection Box */
+.last-detection-box {
+    background-color: #2c2c2c;
+    border: 1px solid #444;
+    border-left: 5px solid var(--primary-color); /* Highlight with purple border */
+}
+
+/* List Group for Users */
+.list-group-item {
+    background-color: #252525;
+    color: var(--text-light);
+    border: 1px solid #333;
+    margin-bottom: 5px;
+    border-radius: 8px !important;
+    transition: background-color 0.2s;
+}
+
+.list-group-item:hover {
+    background-color: #383838;
+}
+
+.form-control {
+    background-color: #2c2c2c;
+    color: var(--text-light);
+    border: 1px solid #444;
+}
+.form-control:focus {
+    background-color: #2c2c2c;
+    color: var(--text-light);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(106, 13, 173, 0.5);
+}
+</style>
+<!-- HERO SECTION -->
+<section class="py-5 px-3"
+    style="
+        background: radial-gradient(circle at right, #481197, #120022 60%);
+        color: white;
+    ">
+    <div class="container">
+        <div class="row align-items-center">
+
+            <!-- Left Text -->
+            <div class="col-lg-6 mb-4">
+                <h1 class="fw-bold display-5" style="color: whitesmoke; text-align: left;">
+                    Unlock the Future<br>
+                    with <span style="color:#b56bff;">AI-Powered</span><br>
+                    Face Recognition
+                </h1>
+                <p class="mt-3 text-light opacity-75">
+                    Seamless, secure, and lightning-fast face detection for authentication,
+                    attendance, and identity verification.
+                </p>
+
+                <div class="mt-4">
+                    <a href="{{ url_for('register') }}" class="btn px-4 py-2 me-2"
+                        style="background:#b300ff; color:white; border-radius:12px;">
+                        Get Started
+                    </a>
+                    <a href="{{ url_for('login') }}" class="btn px-4 py-2"
+                        style="background:#ffffff22; backdrop-filter:blur(8px); color:white; border-radius:12px;">
+                        Sign In
+                    </a>
+                </div>
+            </div>
+
+            <!-- Right AI Face Image -->
+            <div class="col-lg-6 text-center">
+                <img src="{{ url_for('static', filename='images/hero-face.jpg') }}"
+                     class="img-fluid"
+                     style="max-height:360px; border-radius:20px;
+                     box-shadow:0 0 25px #8a2be2;">
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- FEATURE CARDS -->
+<section class="py-5" style="background:#0e001d;">
+    <div class="container">
+        <div class="row g-4">
+
+            {% for item in [
+                ('Live Camera Stream', 'fas fa-video'),
+                ('Recognize from Image', 'fas fa-image'),
+                ('Registered Users', 'fas fa-users'),
+                ('Attendance Reports', 'fas fa-file-alt')
+            ] %}
+            <div class="col-md-6 col-lg-3">
+                <div class="p-4 rounded-4 text-center shadow-lg"
+                     style="
+                       backdrop-filter: blur(20px);
+                       background: rgba(255,255,255,0.06);
+                       border:1px solid rgba(255,255,255,0.1);
+                       color:white;
+                     ">
+                    <i class="{{ item[1] }} mb-3" style="font-size:2rem; color:#bf71ff;"></i>
+                    <h5 class="fw-bold" style="white-space: nowrap;">{{ item[0] }}</h5>
+                </div>
+            </div>
+            {% endfor %}
+
+        </div>
+    </div>
+</section>
+
+
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center fw-bolder mb-5" style="color:var(--primary-color);">
+            <i class="bi bi-person-badge-fill me-2"></i> Face Recognition Dashboard
+        </h2>
+
+        <div class="row g-4">
+
+            <div class="col-lg-6">
+                <div class="card border-0">
+                    <div class="card-body">
+                        <h5 class="card-title">Live Camera Stream</h5>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <span class="badge bg-danger" id="streamStatus">OFFLINE</span>
+                            </div>
+                            <div>
+                                <button id="startStreams" class="btn btn-sm btn-success me-2"
+                                    onclick="startStreamAction()">Start</button>
+                                <button id="stopStreams" class="btn btn-sm btn-secondary"
+                                    onclick="stopStreamAction()">Stop</button>
+                            </div>
+                        </div>
+                        
+                        <div class="ratio ratio-16x9 rounded">
+                            <img id="cam1"
+                                 data-src="{{ url_for('video1') }}"
+                                 style="width:100%; height:100%; object-fit:cover; filter: brightness(0.9);">
+                        </div>
+
+                        <div class="mt-4">
+                            <small class="text-muted d-block mb-1">Last Detected Person:</small>
+                            <div class="p-3 last-detection-box rounded">
+                                <strong id="lastName" class="fs-5">None</strong>
+                                <span id="lastReg" class="text-muted d-block mt-1">N/A</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="mt-3">
-                    <small class="text-muted">Last detection:</small>
-                    <div id="lastDetection" class="p-2 border rounded" style="background:#f8f9fa;">
-                        <strong id="lastName">None</strong> <span id="lastReg" class="text-muted"></span>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card border-0">
+                    <div class="card-body">
+                        <h5 class="card-title">Recognize from Image</h5>
+
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="input-group mb-4">
+                                <input type="file" class="form-control" id="imageFile"
+                                    accept="image/*" required onchange="previewImage()">
+                                <button class="btn btn-primary" type="button"
+                                    onclick="recognizeImage()">Recognize</button>
+                            </div>
+                        </form>
+
+                        <div id="imagePreviewContainer" style="display:none; text-align:center;" class="mb-4">
+                            <h6 class="text-muted">Image Preview:</h6>
+                            <img id="imagePreview" class="rounded shadow-lg"
+                                 style="max-width:300px; max-height:200px; object-fit:cover; border: 3px solid var(--primary-color);">
+                        </div>
+
+                        <div id="uploadResult" class="mt-2 p-3 rounded" style="background-color: #2c2c2c;">
+                             <small class="text-muted">Recognition Status will appear here.</small>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="col-lg-6">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Recognize from Image</h5>
-                <form id="uploadForm" enctype="multipart/form-data">
-                    <div class="input-group mb-3">
-                        <input type="file" class="form-control" id="imageFile" name="file" accept="image/*" required onchange="previewImage()">
-                        <button class="btn btn-primary" type="button" onclick="recognizeImage()">Recognize</button>
-                    </div>
-                </form>
+            <div class="col-lg-12">
+                <div class="card border-0">
+                    <div class="card-body">
+                        <h5 class="card-title">Registered Users <span class="badge bg-secondary">{{ users|length }}</span></h5>
+                        
+                        <div class="row g-3">
+                            {% for u in users %}
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                                    <div>
+                                        <strong class="text-uppercase">{{ u.name }}</strong><br>
+                                        <small class="text-muted">{{ u.regid }}</small>
+                                    </div>
 
-                <div id="imagePreviewContainer" class="mb-3" style="display:none;">
-                    <h6>Image Preview:</h6>
-                    <div style="max-height: 300px; overflow: auto;">
-                        <img id="imagePreview" alt="Preview" style="max-width: 100%; height: auto; border-radius: 5px;">
-                    </div>
-                </div>
-
-                <div id="uploadResult" class="mt-2"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-5">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Registered Users</h5>
-                <div class="list-group">
-                    {% if users %}
-        
-                        {% for u in users %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>{{ u.name }}</strong><br>
-                                    <small class="text-muted">{{ u.regid }}</small>
-                                </div>
-                                <div>
-                                        {% set thumb = (u.regid ~ '.jpg') %}
-                                        {% if uploads and (thumb in uploads) %}
-                                            <img src="{{ url_for('get_image', filename=thumb) }}" alt="thumb" class="rounded" style="width:48px; height:48px; object-fit:cover;">
-                                        {% endif %}
+                                    {% set thumb = u.regid ~ '.jpg' %}
+                                    {% if uploads and thumb in uploads %}
+                                    <img src="{{ url_for('get_image', filename=thumb) }}"
+                                         style="width:60px; height:60px; object-fit:cover; border: 2px solid var(--primary-color);"
+                                         class="rounded-circle ms-3">
+                                    {% endif %}
                                 </div>
                             </div>
-                        {% endfor %}
-                    {% else %}
-                        <p class="text-muted">No users registered yet.</p>
-                    {% endif %}
+                            {% endfor %}
+                        </div>
+
+                    </div>
                 </div>
             </div>
+
         </div>
     </div>
-</div>
+</section>
 
-    <div class="mt-3">
-        <a href="/" onclick="reloadPage()">Go to Index</a>
-    </div>
+<section class="py-5 text-center text-white"
+    style="background: linear-gradient(135deg, #7b2ff7, #4b00e0);">
+    <h2 class="fw-bold">Manage Your AI Face Attendance System</h2>
+    <p class="opacity-75">Add new users or access your dashboard.</p>
+
+    <a href="{{ url_for('register') }}" class="btn btn-light px-4 py-2 me-2 rounded-pill">
+        Add User
+    </a>
+
+    <a href="{{ url_for('login') }}" class="btn btn-outline-light px-4 py-2 rounded-pill">
+        Sign In
+    </a>
+</section>
+
+
+<footer class="py-4 text-center text-white"
+    style="
+        background: linear-gradient(135deg, #120033, #2d006b, #4800b8);
+        border-top: 1px solid rgba(255,255,255,0.1);
+    ">
+    <p class="mb-0">© 2025 Face Attendance AI — All Rights Reserved</p>
+</footer>
+
+
 
     <script>
         // Simple reload helper
