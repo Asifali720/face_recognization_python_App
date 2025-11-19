@@ -1,16 +1,37 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h3 class="card-title mb-3">Register</h3>
 
+<!-- Include Font Awesome -->
+<!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"> -->
+
+<div class="row justify-content-center" style="padding-top: 40px; padding-bottom:40px; overflow-x: hidden;">
+    <div class="col-md-8" style="max-width: 650px;">
+
+        <div class="card shadow-lg"
+            style="
+                background: rgba(20,0,30,0.65);
+                backdrop-filter: blur(15px);
+                border-radius: 20px;
+                border: 1px solid rgba(200,0,255,0.2);
+                box-shadow: 0 0 25px rgba(200,0,255,0.3);
+                color: white;
+            "
+        >
+            <div class="card-body">
+
+                <h3 class="card-title mb-2 text-center"
+                    style="font-weight:700; color:#d56bff; text-shadow:0 0 8px #9b4dff;">
+                    Register Account
+                </h3>
+
+                <p class="text-center" style="color:#ddd;">Create your secure biometric account</p>
+
+                <!-- Flash messages -->
                 {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, msg in messages %}
-                        <div class="alert alert-{{ 'success' if category=='success' else 'danger' }}" role="alert">{{ msg }}</div>
+                        <div class="alert alert-{{ 'success' if category=='success' else 'danger' }} mt-2" role="alert">{{ msg }}</div>
                     {% endfor %}
                 {% endif %}
                 {% endwith %}
@@ -19,185 +40,278 @@
                     <div class="alert alert-danger">{{ error }}</div>
                 {% endif %}
 
-                <form method="POST" action="{{ url_for('register') }}">
+                <form method="POST" action="{{ url_for('register') }}" class="mt-4">
+
+                    <!-- Username -->
                     <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" name="username" id="username" required>
+                        <label for="username" class="form-label" style="color:#d8baff;">Username</label>
+                        <input type="text" name="username" id="username" required
+                            class="form-control"
+                            style="
+                                border-radius: 50px;
+                                background: rgba(255,255,255,0.1);
+                                color: white;
+                                border: 1px solid rgba(200,0,255,0.3);
+                            ">
                     </div>
 
+                    <!-- Email -->
                     <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" name="email" id="email" required>
+                        <label for="email" class="form-label" style="color:#d8baff;">Email</label>
+                        <input type="email" name="email" id="email" required
+                            class="form-control"
+                            style="
+                                border-radius: 50px;
+                                background: rgba(255,255,255,0.1);
+                                color: white;
+                                border: 1px solid rgba(200,0,255,0.3);
+                            ">
                     </div>
 
-                    <!-- <div class="mb-3">
-                        <label for="reg_id" class="form-label">Registration ID</label>
-                        <input type="text" class="form-control" name="reg_id" id="reg_id" required>
-                    </div> -->
+                    <!-- Age -->
+                    <div class="mb-3">
+                        <label for="age" class="form-label" style="color:#d8baff;">Age</label>
 
-                      <div class="mb-3">
-                        <label for="age" class="form-label">Age</label>
-                            <div class="input-group" style="max-width:160px;">
-                                <span class="input-group-text">🎂</span>
-                                <input type="number" class="form-control" name="age" id="age" min="1" placeholder="e.g. 21" required>
-                            </div>
-                            <div class="form-text">Please enter your age (required).</div>
+                        <div class="input-group" style="max-width:170px;">
+                            <span class="input-group-text"
+                                style="
+                                    background:#430063;
+                                    border:1px solid #b84dff;
+                                    color:#fff;
+                                ">🎂</span>
+
+                            <input type="number" min="1" placeholder="21"
+                                name="age" id="age" required class="form-control"
+                                style="
+                                    border-radius:50px;
+                                    background:rgba(255,255,255,0.1);
+                                    color:white;
+                                    border:1px solid rgba(200,0,255,0.3);
+                                ">
+                        </div>
                     </div>
 
+                    <!-- Password -->
                     <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" name="password" id="password"  required>
+                        <label for="password" class="form-label" style="color:#d8baff;">Password</label>
+
+                        <div class="input-group">
+                            <input type="password" name="password" id="password" required
+                                class="form-control"
+                                style="
+                                    border-radius:50px 0 0 50px;
+                                    background:rgba(255,255,255,0.1);
+                                    color:white;
+                                    border:1px solid rgba(200,0,255,0.3);
+                                ">
+
+                            <button type="button" id="togglePassword"
+                                class="btn"
+                                style="
+                                    border-radius:0 50px 50px 0;
+                                    background:#430063;
+                                    color:#fff;
+                                    border:1px solid #b84dff;
+                                ">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- <div class="mb-3">
-                        <label for="role" class="form-label">Role</label>
-                        <select class="form-select" name="role" id="role">
-                            <option value="student">Student</option>
-                            <option value="teacher">Teacher</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div> -->
+                    <!-- Camera Section -->
+                    <div class="mb-4">
+                        <p style="color:#d8baff;">Capture Live Face (Required)</p>
 
-                    <div class="mb-3">
-                        <p>Capture live face for registration (required):</p>
-                        <div class="d-flex gap-3 align-items-start">
+                        <div style="display:flex; gap:20px;">
                             <div>
-                                <!-- Video container: overlay shown on capture -->
-                                <div id="videoContainer" style="position:relative; width:320px; height:240px;">
-                                    <video id="video" width="320" height="240" playsinline class="border" style="display:none;"></video>
+
+                                <div id="videoContainer"
+                                    style="
+                                        position:relative;
+                                        width:320px;
+                                        height:240px;
+                                        border-radius: 15px;
+                                        overflow:hidden;
+                                        border:1px solid #b84dff;
+                                        box-shadow:0 0 10px rgba(200,0,255,0.4);
+                                    ">
+
+                                    <video id="video" width="320" height="240"
+                                        playsinline
+                                        style="display:none; border-radius:15px;"></video>
+
                                     <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
-                                    <div id="captureOverlay" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.55); color:#fff; align-items:center; justify-content:center; font-weight:600; font-size:1.1rem; display:flex;">
-                                        Capturing...
+
+                                    <div id="captureOverlay"
+                                         style="
+                                            display:none;
+                                            position:absolute;
+                                            inset:0;
+                                            background:rgba(0,0,0,0.6);
+                                            backdrop-filter: blur(4px);
+                                            color:#fff;
+                                            font-size:1.2rem;
+                                            font-weight:600;
+                                            align-items:center;
+                                            justify-content:center;
+                                            display:flex;
+                                         ">
+                                         Capturing...
                                     </div>
                                 </div>
 
                                 <div class="mt-2">
-                                    <label class="form-label">Captured Preview</label>
-                                    <div class="border p-1 mb-2" style="width:320px; height:240px; display:flex; align-items:center; justify-content:center; background:#f8f9fa;">
-                                        <img id="preview" src="" alt="No capture" style="max-width:100%; max-height:100%; object-fit:contain; display:none;">
+                                    <label class="form-label" style="color:#d8baff;">Preview</label>
+                                    <div style="
+                                            width:320px;
+                                            height:240px;
+                                            background:rgba(255,255,255,0.05);
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            border-radius:15px;
+                                            border:1px solid rgba(200,0,255,0.2);
+                                            overflow:hidden;
+                                        ">
+                                        <img id="preview" style="max-width:100%; display:none; border-radius:15px;">
                                     </div>
-                                    <button type="button" id="captureBtn" class="btn btn-outline-primary">Capture Live Face</button>
-                                    <span id="captureStatus" class="ms-2 text-muted"></span>
+
+                                    <button type="button" id="captureBtn"
+                                        class="btn mt-2"
+
+                                        style="
+                                            background:#b300ff;
+                                            color:white;
+                                            border:none;
+                                            padding:8px 18px;
+                                            border-radius:50px;
+                                            font-weight:600;
+                                            box-shadow:0 0 10px rgba(200,0,255,0.4);
+                                        ">
+                                        Capture Face
+                                    </button>
+
+                                    <span id="captureStatus" style="color:#ccc; margin-left:10px;"></span>
                                 </div>
                             </div>
                         </div>
+
                         <input type="hidden" name="captured_image" id="captured_image">
                     </div>
 
-                    <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('login') }}">Already have an account? Login</a>
-                        <button type="submit" class="btn btn-primary">Register</button>
+                    <!-- Submit -->
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <a href="{{ url_for('login') }}" style="color:#e26cff;">Already registered? Login</a>
+
+                        <button class="btn"
+                            style="
+                                background:#b300ff;
+                                color:white;
+                                font-weight:600;
+                                border:none;
+                                padding:8px 25px;
+                                border-radius:50px;
+                                box-shadow:0 0 12px rgba(200,0,255,0.5);
+                            ">
+                            Register
+                        </button>
                     </div>
+
                 </form>
             </div>
         </div>
     </div>
 </div>
 
+<!-- JS Password Toggle -->
 <script>
-    // Webcam capture: start camera only on button click (user gesture required in many browsers)
+    document.getElementById('togglePassword').addEventListener('click', function () {
+        const pwd = document.getElementById('password');
+        const icon = this.querySelector('i');
+        const isHidden = pwd.type === "password";
+
+        pwd.type = isHidden ? "text" : "password";
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+    });
+</script>
+
+<!-- Camera Capture Script -->
+<script>
+    let mediaStream = null;
+    let isCameraActive = false;
+
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
-    const captureBtn = document.getElementById('captureBtn');
-    const capturedInput = document.getElementById('captured_image');
-    const captureStatus = document.getElementById('captureStatus');
-
-    let stream = null;
-    let cameraStarted = false;
-    const overlay = document.getElementById('captureOverlay');
     const preview = document.getElementById('preview');
+    const captureBtn = document.getElementById('captureBtn');
+    const captureStatus = document.getElementById('captureStatus');
+    const capturedImageInput = document.getElementById('captured_image');
+    const videoContainer = document.getElementById('videoContainer');
+    const captureOverlay = document.getElementById('captureOverlay');
 
+    // Start camera on page load
     async function startCamera() {
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            video.srcObject = stream;
-            // Some browsers require an explicit play() call and time to start producing frames.
-            try {
-                await video.play();
-            } catch (playErr) {
-                // play() may fail silently on some platforms; we'll still wait for 'playing' event.
-            }
-
-            // Wait until video has enough data or a short timeout
-            await new Promise((resolve) => {
-                if (video.readyState >= 3) return resolve();
-                const onPlaying = () => { video.removeEventListener('playing', onPlaying); resolve(); };
-                video.addEventListener('playing', onPlaying);
-                setTimeout(resolve, 1000);
+            mediaStream = await navigator.mediaDevices.getUserMedia({
+                video: { 
+                    facingMode: 'user',
+                    width: { ideal: 320 },
+                    height: { ideal: 240 }
+                }
             });
-
-            // Make video visible and size the canvas to the actual video resolution
+            
+            video.srcObject = mediaStream;
             video.style.display = 'block';
-            canvas.width = video.videoWidth || canvas.width || 320;
-            canvas.height = video.videoHeight || canvas.height || 240;
-            cameraStarted = true;
-            captureStatus.textContent = ' Camera ready — click again to take photo';
-            captureBtn.textContent = 'Take Photo';
+            isCameraActive = true;
+            captureStatus.textContent = '✓ Camera ready';
+            captureStatus.style.color = '#00ff00';
+            
+            video.onloadedmetadata = function() {
+                video.play();
+            };
         } catch (err) {
-            console.warn('Could not start camera:', err);
-            captureStatus.textContent = ' Camera unavailable';
+            console.error('Camera access denied:', err);
+            captureStatus.textContent = '✗ Camera access denied';
+            captureStatus.style.color = '#ff0000';
         }
     }
 
-    function stopCamera() {
-        if (stream) {
-            const tracks = stream.getTracks();
-            tracks.forEach(t => t.stop());
-            stream = null;
-        }
-        video.style.display = 'none';
-        cameraStarted = false;
-        captureBtn.textContent = 'Capture Live Face';
-    }
-
-    captureBtn.addEventListener('click', async () => {
-        // If camera not started, start it on user click (required by browsers)
-        if (!cameraStarted) {
-            await startCamera();
+    // Capture face image
+    captureBtn.addEventListener('click', function() {
+        if (!isCameraActive) {
+            captureStatus.textContent = '✗ Camera not ready';
+            captureStatus.style.color = '#ff0000';
             return;
         }
 
-        try {
-            // Ensure video has frames before capturing
-            if (video.readyState < 2) { // HAVE_CURRENT_DATA
-                captureStatus.textContent = ' Waiting for video...';
-                await new Promise((resolve) => {
-                    const onPlaying = () => { video.removeEventListener('playing', onPlaying); resolve(); };
-                    video.addEventListener('playing', onPlaying);
-                    setTimeout(resolve, 800);
-                });
-            }
+        // Show capturing overlay
+        captureOverlay.style.display = 'flex';
 
-            // Capture image from video
-            const ctx = canvas.getContext('2d');
-            // If canvas size differs from video, update it to avoid stretched/black frames
-            if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-                canvas.width = video.videoWidth || canvas.width;
-                canvas.height = video.videoHeight || canvas.height;
-            }
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            // show overlay briefly so user sees capture occurred
-            if (overlay) {
-                overlay.style.display = 'flex';
-            }
-            const dataUrl = canvas.toDataURL('image/jpeg');
-            capturedInput.value = dataUrl;
-            captureStatus.textContent = ' Captured';
-            // show preview image
-            if (preview) {
-                preview.src = dataUrl;
-                preview.style.display = 'block';
-            }
-            // hide overlay immediately now capture is done
-            if (overlay) overlay.style.display = 'none';
-            // Stop camera shortly after to allow preview rendering
-            setTimeout(() => {
-                stopCamera();
-            }, 200);
-        } catch (err) {
-            console.error('Capture failed:', err);
-            captureStatus.textContent = ' Capture failed';
-            if (overlay) overlay.style.display = 'none';
+        // Draw video frame to canvas
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Convert canvas to image
+        setTimeout(() => {
+            const imageData = canvas.toDataURL('image/jpeg');
+            preview.src = imageData;
+            preview.style.display = 'block';
+            capturedImageInput.value = imageData;
+            
+            captureOverlay.style.display = 'none';
+            captureStatus.textContent = '✓ Face captured successfully';
+            captureStatus.style.color = '#00ff00';
+        }, 500);
+    });
+
+    // Start camera when page loads
+    window.addEventListener('load', startCamera);
+
+    // Stop camera on page unload
+    window.addEventListener('beforeunload', function() {
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
         }
     });
 </script>
