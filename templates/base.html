@@ -83,7 +83,29 @@
           </a>
         </li>
 
-        {% if current_user.role != 'admin' %}
+        {% if current_user.role == 'admin' %}
+        <!-- Admin: Show only icon, no dropdown -->
+        <li class="nav-item ms-2 dropdown">
+          <button class="btn text-white px-3 py-2 rounded-lg dropdown-toggle" 
+                  type="button" 
+                  id="adminDropdown" 
+                  data-bs-toggle="dropdown" 
+                  aria-expanded="false"
+                  style="background:#ffffff22; border:none; cursor:pointer; border-radius: 50px !important;">
+            <i class="fas fa-user-circle" style="font-size: 1.5rem;"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="adminDropdown" style="background: rgba(39, 0, 58, 0.95); border:1px solid rgba(200,0,255,0.3);">
+            <li>
+              <form method="post" action="{{ url_for('logout') }}" style="display: inline;">
+                <button type="submit" class="dropdown-item" style="color: #ff6b6b; cursor: pointer; border: none; background: none; text-align: left; width: 100%;">
+                  <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+              </form>
+            </li>
+          </ul>
+        </li>
+        {% else %}
+        <!-- Non-Admin: Show dropdown with profile and logout -->
         <li class="nav-item ms-2 dropdown" >
           <button class="btn text-white px-3 py-2 rounded-lg dropdown-toggle" 
                   type="button" 
