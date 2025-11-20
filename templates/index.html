@@ -87,17 +87,7 @@
     box-shadow: 0 0 0 0.25rem rgba(106, 13, 173, 0.5);
 }
 
-.hover-btn:hover {
-    background-color: #9c3eff !important;
-    box-shadow: 0 0 15px #b56bff !important;
-    transform: translateY(-2px);
 
-}
-.hover-btn-2:hover {
-    background-color: #ffffff33 !important;
-    box-shadow: 0 0 15px #b56bff !important;
-    transform: translateY(-2px);
-}
 </style>
 <!-- HERO SECTION -->
 <section class="py-5 px-3"
@@ -174,204 +164,338 @@
 </section>
 
 
-<section class="py-5" style="background: radial-gradient(circle at right, #481197, #120022 60%); min-height:100vh;">
+<section class="py-5" style="background: linear-gradient(135deg, #0f0015 0%, #1a0033 50%, #2d0052 100%); min-height:100vh; position:relative; overflow:hidden;">
+  <!-- Animated background elements -->
+  <div style="position:absolute; top:-100px; right:-100px; width:300px; height:300px; background:radial-gradient(circle, rgba(179,0,255,0.15) 0%, transparent 70%); border-radius:50%; animation:float 6s ease-in-out infinite;"></div>
+  <div style="position:absolute; bottom:-50px; left:-50px; width:250px; height:250px; background:radial-gradient(circle, rgba(255,0,110,0.1) 0%, transparent 70%); border-radius:50%; animation:float 8s ease-in-out infinite reverse;"></div>
 
-    <div class="container">
-
-        <h2 class="text-center fw-bolder mb-5"
-            style="color:#b300ff; text-shadow:0 0 10px #b300ff;">
-            <i class="fa-solid fa-id-badge me-2"></i> Live Face Recognition </h2>
-
-        <div class="row g-4">
-
-            <!-- LIVE STREAM -->
-            <div class="col-lg-6">
-                <div class="card border-0"
-                     style="background:#141414; color:white; border-radius:16px; box-shadow:0 0 15px rgba(179,0,255,0.25);">
-
-                    <div class="card-body">
-
-                        <h5 class="card-title" style="color:#e6b3ff;">
-                            <i class="fa-solid fa-video me-2"></i> Live Camera Stream
-                        </h5>
-
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="badge bg-danger" id="streamStatus"
-                                  style="font-size:0.8rem; padding:6px 12px; border-radius: 50px !important;">OFFLINE</span>
-
-                            <div>
-                                <button id="startStreams" class="btn btn-sm"
-                                        onclick="startStreamAction()"
-                                        style="background:#28a745; color:white; border:none; border-radius:6px;">
-                                        <i class="fa-solid fa-play"></i>
-                                </button>
-
-                                <button id="stopStreams" class="btn btn-sm"
-                                        onclick="stopStreamAction()"
-                                        style="background:#6c757d; color:white; border:none; border-radius:6px;">
-                                        <i class="fa-solid fa-stop"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="ratio ratio-16x9 rounded"
-                             style="border:2px solid #b300ff; box-shadow:0 0 10px #b300ff;">
-                            <img id="cam1"
-                                data-src="{{ url_for('video1') }}"
-                                style="width:100%; height:100%; object-fit:cover; filter:brightness(0.9); border-radius:10px;">
-                        </div>
-
-                        <div class="mt-4">
-                            <small class="text-muted d-block mb-1" style="color:#ccc !important;">
-                                Last Detected Person:
-                            </small>
-
-                            <div class="p-3 rounded"
-                                 style="background:#1a1a1a; border-left:4px solid #b300ff;">
-                                <strong id="lastName" class="fs-5" style="color:#e6b3ff;">
-                                    None
-                                </strong>
-
-                                <span id="lastReg" class="text-muted d-block mt-1"
-                                      style="color:#bbb !important;">N/A</span>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-
-            <!-- IMAGE RECOGNITION -->
-            <div class="col-lg-6">
-                <div class="card border-0"
-                     style="background:#141414; color:white; border-radius:16px; box-shadow:0 0 15px rgba(179,0,255,0.25);">
-
-                    <div class="card-body">
-
-                        <h5 class="card-title" style="color:#e6b3ff;">
-                            <i class="fa-solid fa-image me-2"></i> Recognize From Image
-                        </h5>
-
-                        <form id="uploadForm" enctype="multipart/form-data">
-                            <div class="input-group mb-4" style="border-radius:50px;">
-                                <label class="input-group-text"
-                                       style="background:#b300ff; color:white; border:none;">
-                                    <i class="fa-solid fa-upload"></i>
-                                </label>
-
-                                <input type="file" class="form-control" id="imageFile"
-                                       accept="image/*" required
-                                       onchange="previewImage()"
-                                       style="background:#1d1d1d; color:white; border:none;">
-
-                                <button class="btn"
-                                        onclick="recognizeImage()"
-                                        type="button"
-                                        style="background:#b300ff; color:white; border:none;">
-                                    <i class="fa-solid fa-brain"></i>
-                                </button>
-                            </div>
-                        </form>
-
-                        <div id="imagePreviewContainer"
-                             style="display:none; text-align:center;" class="mb-4">
-                            <h6 class="text-muted" style="color:#ccc !important;">
-                                Image Preview:
-                            </h6>
-
-                            <img id="imagePreview" class="rounded shadow-lg"
-                                 style="max-width:300px; max-height:200px; object-fit:cover;
-                                 border: 3px solid #b300ff; border-radius:12px;">
-                        </div>
-
-                        <div id="uploadResult" class="mt-2 p-3 rounded"
-                             style="background:#1e1e1e; color:white; border-left:4px solid #b300ff;">
-                             <small class="text-muted" style="color:#aaa !important;">
-                                Recognition status will appear here.
-                             </small>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-
-            <!-- REGISTERED USERS -->
-            <div class="col-lg-12">
-                <div class="card border-0"
-                    style="background:#141414; color:white; border-radius:16px; box-shadow:0 0 15px rgba(179,0,255,0.25);">
-
-                    <div class="card-body">
-
-                        <h5 class="card-title" style="color:#e6b3ff;">
-                            <i class="fa-solid fa-users me-2"></i>
-                            Registered Users
-                            <span class="badge bg-secondary">{{ users|length }}</span>
-                        </h5>
-
-                        <div class="row g-3">
-
-                            {% for u in users %}
-                            <div class="col-6 col-md-4 col-lg-3">
-
-                                <div class="list-group-item d-flex justify-content-between align-items-center p-3"
-                                     style="background:#1a1a1a; border-radius:12px; border:1px solid #2b2b2b;">
-
-                                    <div>
-                                        <strong style="color:#e6b3ff;" class="text-uppercase">
-                                            {{ u.name }}
-                                        </strong><br>
-                                        <small class="text-muted" style="color:#bbb !important;">
-                                            {{ u.regid }}
-                                        </small>
-                                    </div>
-
-                                    {% set thumb = u.regid ~ '.jpg' %}
-                                    {% if uploads and thumb in uploads %}
-                                    <img src="{{ url_for('get_image', filename=thumb) }}"
-                                        style="width:60px; height:60px; object-fit:cover;
-                                        border:2px solid #b300ff; border-radius:50%;"
-                                        class="ms-3">
-                                    {% else %}
-                                    <i class="fa-solid fa-user"
-                                        style="font-size:45px; color:#b300ff;"></i>
-                                    {% endif %}
-
-                                </div>
-                            </div>
-                            {% endfor %}
-
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-
-        </div>
+  <div class="container" style="position:relative; z-index:1;">
+    <!-- Header -->
+    <div style="text-align:center; margin-bottom:3rem; animation:slideDown 0.8s ease-out;">
+      <h2 style="color:#fff; font-weight:900; font-size:2.5rem; margin-bottom:0.5rem; text-shadow:0 0 20px rgba(179,0,255,0.5);">
+        <i class="fa-solid fa-id-badge" style="color:#ff006e;"></i> Live Face Recognition
+      </h2>
+      <p style="color:#b300ff; font-weight:600; font-size:1rem; letter-spacing:1px;">AI-Powered Attendance System</p>
     </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(500px, 1fr)); gap:2rem; margin-bottom:2rem;">
+      
+      <!-- LIVE STREAM -->
+      <div style="background:rgba(20,20,20,0.8); backdrop-filter:blur(10px); border-radius:20px; overflow:hidden; border:1px solid rgba(179,0,255,0.3); box-shadow:0 8px 32px rgba(179,0,255,0.2); animation:fadeInUp 1s ease-out;">
+        <div style="padding:2rem;">
+          <h5 style="color:#ff006e; font-weight:700; font-size:1.2rem; margin-bottom:1.5rem;">
+            <i class="fa-solid fa-video" style="margin-right:0.75rem;"></i> Live Camera Stream
+          </h5>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+            <span id="streamStatus" style="background:linear-gradient(135deg, #dc3545, #c82333); color:white; padding:0.5rem 1rem; border-radius:50px; font-size:0.85rem; font-weight:600; letter-spacing:0.5px;">OFFLINE</span>
+
+            <div style="display:flex; gap:0.75rem;">
+              <button id="startStreams" onclick="startStreamAction()" style="background:linear-gradient(135deg, #00d4ff, #0088ff); color:white; border:none; padding:0.5rem 1rem; border-radius:8px; cursor:pointer; font-weight:600; transition:all 0.3s ease; box-shadow:0 4px 15px rgba(0,212,255,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0,212,255,0.5)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0,212,255,0.3)';">
+                <i class="fa-solid fa-play"></i>
+              </button>
+
+              <button id="stopStreams" onclick="stopStreamAction()" style="background:linear-gradient(135deg, #ff006e, #d60056); color:white; border:none; padding:0.5rem 1rem; border-radius:8px; cursor:pointer; font-weight:600; transition:all 0.3s ease; box-shadow:0 4px 15px rgba(255,0,110,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(255,0,110,0.5)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(255,0,110,0.3)';">
+                <i class="fa-solid fa-stop"></i>
+              </button>
+            </div>
+          </div>
+
+          <div style="aspect-ratio:16/9; border:2px solid; border-image:linear-gradient(135deg, #00d4ff, #ff006e) 1; border-radius:16px; overflow:hidden; box-shadow:0 0 20px rgba(179,0,255,0.3), inset 0 0 20px rgba(0,212,255,0.1);">
+            <img id="cam1" data-src="{{ url_for('video1') }}" style="width:100%; height:100%; object-fit:cover; filter:brightness(0.95) contrast(1.1);"/>
+          </div>
+
+          <div style="margin-top:2rem;">
+            <small style="color:#aaa; display:block; margin-bottom:0.75rem; font-weight:600; letter-spacing:0.5px;">LAST DETECTED PERSON:</small>
+            <div style="background:rgba(179,0,255,0.1); border-left:4px solid #ff006e; padding:1.25rem; border-radius:12px; backdrop-filter:blur(5px);">
+              <strong id="lastName" style="color:#00d4ff; font-size:1.1rem;">None</strong>
+              <span id="lastReg" style="color:#999; display:block; margin-top:0.5rem; font-size:0.9rem;">N/A</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- IMAGE RECOGNITION -->
+      <div style="background:rgba(20,20,20,0.8); backdrop-filter:blur(10px); border-radius:20px; overflow:hidden; border:1px solid rgba(179,0,255,0.3); box-shadow:0 8px 32px rgba(179,0,255,0.2); animation:fadeInUp 1s ease-out 0.1s both;">
+        <div style="padding:2rem;">
+          <h5 style="color:#ff006e; font-weight:700; font-size:1.2rem; margin-bottom:1.5rem;">
+            <i class="fa-solid fa-image" style="margin-right:0.75rem;"></i> Recognize From Image
+          </h5>
+
+          <form id="uploadForm" enctype="multipart/form-data">
+            <div style="display:flex; border-radius:50px; overflow:hidden; margin-bottom:2rem; box-shadow:0 4px 15px rgba(255,0,110,0.2);">
+              <label style="background:linear-gradient(135deg, #ff006e, #b300ff); color:white; padding:0 1.25rem; display:flex; align-items:center; cursor:pointer; font-weight:600;">
+                <i class="fa-solid fa-upload"></i>
+              </label>
+
+              <input type="file" class="form-control" id="imageFile" accept="image/*" required onchange="previewImage()" style="background:#1d1d1d; color:#fff; border:none; padding:0.75rem 1rem; flex:1; outline:none;">
+
+              <button class="btn" onclick="recognizeImage()" type="button" style="background:linear-gradient(135deg, #00d4ff, #0088ff); color:white; border:none; padding:0 1.5rem; cursor:pointer; font-weight:600; transition:all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';">
+                <i class="fa-solid fa-brain"></i>
+              </button>
+            </div>
+          </form>
+
+          <div id="imagePreviewContainer" style="display:none; text-align:center; margin-bottom:2rem; animation:fadeIn 0.5s ease-out;">
+            <h6 style="color:#aaa; margin-bottom:1rem; font-weight:600; letter-spacing:0.5px;">IMAGE PREVIEW:</h6>
+            <img id="imagePreview" style="max-width:300px; max-height:200px; object-fit:cover; border:3px solid #ff006e; border-radius:16px; box-shadow:0 0 20px rgba(255,0,110,0.3);"/>
+          </div>
+
+          <div id="uploadResult" style="background:rgba(179,0,255,0.1); border-left:4px solid #00d4ff; padding:1.25rem; border-radius:12px; color:#fff; backdrop-filter:blur(5px);">
+            <small style="color:#aaa;">Recognition status will appear here.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REGISTERED USERS -->
+    <div style="background:rgba(20,20,20,0.8); backdrop-filter:blur(10px); border-radius:20px; overflow:hidden; border:1px solid rgba(179,0,255,0.3); box-shadow:0 8px 32px rgba(179,0,255,0.2); animation:fadeInUp 1s ease-out 0.2s both;">
+      <div style="padding:2rem;">
+        <h5 style="color:#ff006e; font-weight:700; font-size:1.2rem; margin-bottom:1.5rem;">
+          <i class="fa-solid fa-users" style="margin-right:0.75rem;"></i>
+          Registered Users
+          <span style="background:linear-gradient(135deg, #00d4ff, #0088ff); color:white; padding:0.25rem 0.75rem; border-radius:50px; font-size:0.8rem; margin-left:0.5rem;">{{ users|length }}</span>
+        </h5>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:1.5rem;">
+          {% for u in users %}
+          <div style="background:rgba(26,26,26,0.6); border:1px solid rgba(179,0,255,0.3); border-radius:16px; padding:1.25rem; text-align:center; transition:all 0.3s ease; cursor:pointer;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 30px rgba(179,0,255,0.3)'; this.style.borderColor='rgba(255,0,110,0.6)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'; this.style.borderColor='rgba(179,0,255,0.3)';">
+            <div style="margin-bottom:1rem;">
+              {% set thumb = u.regid ~ '.jpg' %}
+              {% if uploads and thumb in uploads %}
+              <img src="{{ url_for('get_image', filename=thumb) }}" style="width:80px; height:80px; object-fit:cover; border:3px solid #ff006e; border-radius:50%; margin:0 auto; display:block; box-shadow:0 0 15px rgba(255,0,110,0.4);"/>
+              {% else %}
+              <i class="fa-solid fa-user" style="font-size:60px; color:#00d4ff;"></i>
+              {% endif %}
+            </div>
+            <strong style="color:#00d4ff; font-size:0.95rem; text-transform:uppercase; display:block; margin-bottom:0.5rem;">{{ u.name }}</strong>
+            <small style="color:#999; font-weight:600; letter-spacing:0.5px;">{{ u.regid }}</small>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(20px); }
+    }
+    @keyframes slideDown {
+      from { opacity:0; transform:translateY(-20px); }
+      to { opacity:1; transform:translateY(0); }
+    }
+    @keyframes fadeInUp {
+      from { opacity:0; transform:translateY(20px); }
+      to { opacity:1; transform:translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity:0; }
+      to { opacity:1; }
+    }
+  </style>
 </section>
 
 
-<section class="py-5 text-center text-white"
-    style="background: linear-gradient(135deg, #7b2ff7, #4b00e0);">
-    <h2 class="fw-bold">Manage Your AI Face Attendance System</h2>
-    <p class="opacity-75">Add new users or access your dashboard.</p>
+<section class="hero-section" style="
+  background: linear-gradient(135deg, #0f0f1e 0%, #1a0033 50%, #2d0052 100%);
+  padding: 80px 20px;
+  text-align: center;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+">
+  <!-- Animated background elements -->
+  <div style="
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(58, 134, 255, 0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    top: -100px;
+    left: -100px;
+    animation: float 6s ease-in-out infinite;
+  "></div>
+  <div style="
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255, 0, 110, 0.1) 0%, transparent 70%);
+    border-radius: 50%;
+    bottom: -50px;
+    right: -50px;
+    animation: float 8s ease-in-out infinite reverse;
+  "></div>
 
-    <a href="{{ url_for('register') }}" class="btn btn-light px-4 py-2 me-2 rounded-pill">
-        Add User
-    </a>
-
-    <a href="{{ url_for('login') }}" class="btn btn-outline-light px-4 py-2 rounded-pill">
-        Sign In
-    </a>
-</section>
-
-
-<footer class="py-4 text-center text-white"
-    style="
-        background: linear-gradient(135deg, #120033, #2d006b, #4800b8);
-        border-top: 1px solid rgba(255,255,255,0.1);
+  <!-- Content -->
+  <div style="position: relative; z-index: 2; max-width: 600px; animation: slideDown 0.8s ease-out;">
+    <h2 style="
+      font-size: 3rem;
+      font-weight: 900;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #3a86ff 0%, #ff006e 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -1px;
     ">
-    <p class="mb-0">© 2025 Face Attendance AI — All Rights Reserved</p>
+      Manage Your AI Face Attendance System
+    </h2>
+    <p style="
+      font-size: 1.2rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 40px;
+      font-weight: 300;
+      line-height: 1.6;
+    ">
+      Add new users or access your dashboard.
+    </p>
+
+    <!-- Buttons Container -->
+    <div style="
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: fadeIn 1s ease-out 0.3s both;
+    ">
+      <!-- Add User Button -->
+      <a href="{{ url_for('register') }}" style="
+        display: inline-block;
+        padding: 14px 32px;
+        background: linear-gradient(135deg, #3a86ff 0%, #5b7cff 100%);
+        color: white;
+        text-decoration: none;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1rem;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 30px rgba(58, 134, 255, 0.3);
+        cursor: pointer;
+      "
+      onmouseover="
+        this.style.transform = 'translateY(-3px)';
+        this.style.boxShadow = '0 15px 40px rgba(58, 134, 255, 0.5)';
+        this.style.background = 'linear-gradient(135deg, #5b7cff 0%, #3a86ff 100%)';
+      "
+      onmouseout="
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = '0 10px 30px rgba(58, 134, 255, 0.3)';
+        this.style.background = 'linear-gradient(135deg, #3a86ff 0%, #5b7cff 100%)';
+      ">
+        + Add User
+      </a>
+
+      <!-- Sign In Button -->
+      <a href="{{ url_for('login') }}" style="
+        display: inline-block;
+        padding: 14px 32px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        text-decoration: none;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1rem;
+        border: 2px solid rgba(255, 0, 110, 0.6);
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 10px 30px rgba(255, 0, 110, 0.2);
+        cursor: pointer;
+      "
+      onmouseover="
+        this.style.transform = 'translateY(-3px)';
+        this.style.background = 'rgba(255, 0, 110, 0.2)';
+        this.style.boxShadow = '0 15px 40px rgba(255, 0, 110, 0.4)';
+        this.style.borderColor = 'rgba(255, 0, 110, 1)';
+      "
+      onmouseout="
+        this.style.transform = 'translateY(0)';
+        this.style.background = 'rgba(255, 255, 255, 0.1)';
+        this.style.boxShadow = '0 10px 30px rgba(255, 0, 110, 0.2)';
+        this.style.borderColor = 'rgba(255, 0, 110, 0.6)';
+      ">
+        Sign In
+      </a>
+    </div>
+  </div>
+
+  <style>
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(30px);
+      }
+    }
+  </style>
+</section>
+
+<!-- Footer -->
+<footer style="
+  background: linear-gradient(135deg, #0f0f1e 0%, #1a0033 50%, #2d0052 100%);
+  padding: 40px 20px;
+  text-align: center;
+  color: white;
+  border-top: 1px solid rgba(58, 134, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+">
+  <!-- Gradient accent line -->
+  <div style="
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #3a86ff, #ff006e, transparent);
+  "></div>
+
+  <p style="
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  ">
+    © 2025 Face Attendance AI — All Rights Reserved
+  </p>
+  
+  <p style="
+    margin: 10px 0 0 0;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.5);
+  ">
+    Powered by Advanced AI Technology
+  </p>
 </footer>
 
 

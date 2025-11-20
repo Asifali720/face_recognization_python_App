@@ -2,318 +2,595 @@
 
 {% block content %}
 
-<!-- Include Font Awesome -->
-<!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"> -->
+<style>
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
-<div class="row justify-content-center" style="padding-top: 40px; padding-bottom:40px; overflow-x: hidden;">
-    <div class="col-md-8" style="max-width: 650px;">
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 
-        <div class="card shadow-lg"
-            style="
-                background: rgba(20,0,30,0.65);
-                backdrop-filter: blur(15px);
-                border-radius: 20px;
-                border: 1px solid rgba(200,0,255,0.2);
-                box-shadow: 0 0 25px rgba(200,0,255,0.3);
-                color: white;
-            "
-        >
-            <div class="card-body">
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(200,0,255,0.4), inset 0 0 20px rgba(200,0,255,0.1); }
+    50% { box-shadow: 0 0 30px rgba(200,0,255,0.6), inset 0 0 30px rgba(200,0,255,0.15); }
+  }
 
-                <h3 class="card-title mb-2 text-center"
-                    style="font-weight:700; color:#d56bff; text-shadow:0 0 8px #9b4dff;">
-                    Register Account
-                </h3>
+  @keyframes buttonHover {
+    from {
+      box-shadow: 0 0 12px rgba(200,0,255,0.5);
+    }
+    to {
+      box-shadow: 0 0 25px rgba(200,0,255,0.8);
+    }
+  }
 
-                <p class="text-center" style="color:#ddd;">Create your secure biometric account</p>
+  body {
+    background: linear-gradient(135deg, #0a0015 0%, #1a0033 50%, #0f001f 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-                <!-- Flash messages -->
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, msg in messages %}
-                        <div class="alert alert-{{ 'success' if category=='success' else 'danger' }} mt-2" role="alert">{{ msg }}</div>
-                    {% endfor %}
-                {% endif %}
-                {% endwith %}
+  .registration-container {
+    padding: 40px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    animation: fadeIn 0.8s ease-out;
+  }
 
-                {% if error %}
-                    <div class="alert alert-danger">{{ error }}</div>
-                {% endif %}
+  .registration-card {
+    background: rgba(15, 0, 31, 0.7);
+    backdrop-filter: blur(20px);
+    border-radius: 25px;
+    border: 1.5px solid rgba(200, 0, 255, 0.3);
+    box-shadow: 0 0 40px rgba(200, 0, 255, 0.25), inset 0 0 40px rgba(200, 0, 255, 0.05);
+    max-width: 700px;
+    width: 100%;
+    padding: 50px 40px;
+    animation: slideDown 0.6s ease-out;
+  }
 
-                <form method="POST" action="{{ url_for('register') }}" class="mt-4">
+  .registration-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
 
-                    <!-- Username -->
-                    <div class="mb-3">
-                        <label for="username" class="form-label" style="color:#d8baff;">Username</label>
-                        <input type="text" name="username" id="username" required
-                            class="form-control"
-                            style="
-                                border-radius: 50px;
-                                background: rgba(255,255,255,0.1);
-                                color: white;
-                                border: 1px solid rgba(200,0,255,0.3);
-                            ">
-                    </div>
+  .registration-title {
+    font-size: 32px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #d56bff 0%, #ff006e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 30px rgba(200, 0, 255, 0.3);
+    margin: 0 0 10px 0;
+  }
 
-                    <!-- Email -->
-                    <div class="mb-3">
-                        <label for="email" class="form-label" style="color:#d8baff;">Email</label>
-                        <input type="email" name="email" id="email" required
-                            class="form-control"
-                            style="
-                                border-radius: 50px;
-                                background: rgba(255,255,255,0.1);
-                                color: white;
-                                border: 1px solid rgba(200,0,255,0.3);
-                            ">
-                    </div>
+  .registration-subtitle {
+    color: #b8b8ff;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
 
-                    <!-- Age -->
-                    <div class="mb-3">
-                        <label for="age" class="form-label" style="color:#d8baff;">Age</label>
+  .alert {
+    margin-bottom: 20px;
+    padding: 15px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(200, 0, 255, 0.3);
+    font-size: 14px;
+    animation: slideDown 0.4s ease-out;
+  }
 
-                        <div class="input-group" style="max-width:170px;">
-                            <span class="input-group-text"
-                                style="
-                                    background:#430063;
-                                    border:1px solid #b84dff;
-                                    color:#fff;
-                                ">🎂</span>
+  .alert-success {
+    background: rgba(0, 255, 136, 0.1);
+    color: #00ff88;
+    border-color: rgba(0, 255, 136, 0.3);
+  }
 
-                            <input type="number" min="1" placeholder="21"
-                                name="age" id="age" required class="form-control"
-                                style="
-                                    border-radius:50px;
-                                    background:rgba(255,255,255,0.1);
-                                    color:white;
-                                    border:1px solid rgba(200,0,255,0.3);
-                                ">
-                        </div>
-                    </div>
+  .alert-danger {
+    background: rgba(255, 0, 100, 0.1);
+    color: #ff0064;
+    border-color: rgba(255, 0, 100, 0.3);
+  }
 
-                    <!-- Password -->
-                    <div class="mb-3">
-                        <label for="password" class="form-label" style="color:#d8baff;">Password</label>
+  .form-section {
+    margin-bottom: 30px;
+  }
 
-                        <div class="input-group">
-                            <input type="password" name="password" id="password" required
-                                class="form-control"
-                                style="
-                                    border-radius:50px 0 0 50px;
-                                    background:rgba(255,255,255,0.1);
-                                    color:white;
-                                    border:1px solid rgba(200,0,255,0.3);
-                                ">
+  .form-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #d8baff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
-                            <button type="button" id="togglePassword"
-                                class="btn"
-                                style="
-                                    border-radius:0 50px 50px 0;
-                                    background:#430063;
-                                    color:#fff;
-                                    border:1px solid #b84dff;
-                                ">
-                                <i class="fa-solid fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
+  .form-group {
+    margin-bottom: 18px;
+  }
 
-                    <!-- Camera Section -->
-                    <div class="mb-4">
-                        <p style="color:#d8baff;">Capture Live Face (Required)</p>
+  .form-label {
+    display: block;
+    color: #d8baff;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 
-                        <div style="display:flex; gap:20px;">
-                            <div>
+  .form-control {
+    width: 100%;
+    padding: 12px 18px;
+    border-radius: 12px;
+    background: white;
+    border: 1.5px solid rgba(200, 0, 255, 0.2);
+    color: #000;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    font-family: inherit;
+  }
 
-                                <div id="videoContainer"
-                                    style="
-                                        position:relative;
-                                        width:320px;
-                                        height:240px;
-                                        border-radius: 15px;
-                                        overflow:hidden;
-                                        border:1px solid #b84dff;
-                                        box-shadow:0 0 10px rgba(200,0,255,0.4);
-                                    ">
+  .form-control:focus {
+    outline: none;
+    background: white;
+    border-color: rgba(200, 0, 255, 0.6);
+    box-shadow: 0 0 15px rgba(200, 0, 255, 0.3);
+  }
 
-                                    <video id="video" width="320" height="240"
-                                        playsinline
-                                        style="display:none; border-radius:15px;"></video>
+  .form-control::placeholder {
+    color: rgba(0, 0, 0, 0.4);
+  }
 
-                                    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+  .input-group-container {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    max-width: 200px;
+  }
 
-                                    <div id="captureOverlay"
-                                         style="
-                                            display:none;
-                                            position:absolute;
-                                            inset:0;
-                                            background:rgba(0,0,0,0.6);
-                                            backdrop-filter: blur(4px);
-                                            color:#fff;
-                                            font-size:1.2rem;
-                                            font-weight:600;
-                                            align-items:center;
-                                            justify-content:center;
-                                            display:flex;
-                                         ">
-                                         Capturing...
-                                    </div>
-                                </div>
+  .input-group-addon {
+    background: rgba(67, 0, 99, 0.8);
+    border: 1.5px solid rgba(184, 77, 255, 0.5);
+    color: #d8baff;
+    padding: 12px 16px;
+    border-radius: 12px 0 0 12px;
+    font-size: 14px;
+    font-weight: 600;
+  }
 
-                                <div class="mt-2">
-                                    <label class="form-label" style="color:#d8baff;">Preview</label>
-                                    <div style="
-                                            width:320px;
-                                            height:240px;
-                                            background:rgba(255,255,255,0.05);
-                                            display:flex;
-                                            align-items:center;
-                                            justify-content:center;
-                                            border-radius:15px;
-                                            border:1px solid rgba(200,0,255,0.2);
-                                            overflow:hidden;
-                                        ">
-                                        <img id="preview" style="max-width:100%; display:none; border-radius:15px;">
-                                    </div>
+  .input-group-container .form-control {
+    border-radius: 0 12px 12px 0;
+    border-left: none;
+  }
 
-                                    <button type="button" id="captureBtn"
-                                        class="btn mt-2"
+  .password-toggle-btn {
+    background: rgba(67, 0, 99, 0.8);
+    border: 1.5px solid rgba(184, 77, 255, 0.5);
+    color: #d8baff;
+    padding: 12px 16px;
+    border-radius: 0 12px 12px 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    font-weight: 600;
+  }
 
-                                        style="
-                                            background:#b300ff;
-                                            color:white;
-                                            border:none;
-                                            padding:8px 18px;
-                                            border-radius:50px;
-                                            font-weight:600;
-                                            box-shadow:0 0 10px rgba(200,0,255,0.4);
-                                        ">
-                                        Capture Face
-                                    </button>
+  .password-toggle-btn:hover {
+    background: rgba(100, 0, 150, 0.9);
+    border-color: rgba(200, 0, 255, 0.8);
+  }
 
-                                    <span id="captureStatus" style="color:#ccc; margin-left:10px;"></span>
-                                </div>
-                            </div>
-                        </div>
+  .camera-section {
+    background: rgba(100, 0, 150, 0.15);
+    border: 1.5px solid rgba(200, 0, 255, 0.2);
+    border-radius: 16px;
+    padding: 25px;
+    margin-bottom: 30px;
+  }
 
-                        <input type="hidden" name="captured_image" id="captured_image">
-                    </div>
+  .camera-label {
+    display: block;
+    color: #d8baff;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+  }
 
-                    <!-- Submit -->
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <a href="{{ url_for('login') }}" style="color:#e26cff;">Already registered? Login</a>
+  .camera-content {
+    display: flex;
+    gap: 25px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 
-                        <button class="btn"
-                            style="
-                                background:#b300ff;
-                                color:white;
-                                font-weight:600;
-                                border:none;
-                                padding:8px 25px;
-                                border-radius:50px;
-                                box-shadow:0 0 12px rgba(200,0,255,0.5);
-                            ">
-                            Register
-                        </button>
-                    </div>
+  .camera-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
 
-                </form>
-            </div>
-        </div>
+  .video-preview-container {
+    position: relative;
+    width: 320px;
+    height: 240px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid rgba(200, 0, 255, 0.4);
+    box-shadow: 0 0 20px rgba(200, 0, 255, 0.3);
+    background: rgba(0, 0, 0, 0.5);
+    animation: glow 3s ease-in-out infinite;
+  }
+
+  #video {
+    width: 100%;
+    height: 100%;
+    display: none;
+    border-radius: 16px;
+  }
+
+  #canvas {
+    display: none;
+  }
+
+  #captureOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    color: #ff006e;
+    font-size: 16px;
+    font-weight: 700;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .capture-preview-label {
+    display: block;
+    color: #d8baff;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .capture-preview {
+    width: 320px;
+    height: 240px;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    border: 1.5px solid rgba(200, 0, 255, 0.2);
+    overflow: hidden;
+  }
+
+  #preview {
+    max-width: 100%;
+    max-height: 100%;
+    display: none;
+    border-radius: 16px;
+  }
+
+  .capture-btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  #captureBtn {
+    background: linear-gradient(135deg, #b300ff 0%, #ff006e 100%);
+    color: white;
+    box-shadow: 0 0 15px rgba(200, 0, 255, 0.4);
+  }
+
+  #captureBtn:hover {
+    box-shadow: 0 0 25px rgba(200, 0, 255, 0.8), 0 0 40px rgba(255, 0, 110, 0.4);
+    transform: translateY(-2px);
+  }
+
+  #captureStatus {
+    color: #b8b8ff;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    padding-top: 25px;
+    border-top: 1px solid rgba(200, 0, 255, 0.15);
+  }
+
+  .login-link {
+    color: #ff006e;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+  }
+
+  .login-link:hover {
+    color: #ff4d9e;
+    text-shadow: 0 0 10px rgba(255, 0, 110, 0.5);
+  }
+
+  .submit-btn {
+    background: linear-gradient(135deg, #b300ff 0%, #3a86ff 100%);
+    color: white;
+    box-shadow: 0 0 20px rgba(200, 0, 255, 0.5);
+  }
+
+  .submit-btn:hover {
+    animation: buttonHover 0.6s ease-in-out;
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: 768px) {
+    .registration-card {
+      padding: 30px 20px;
+    }
+
+    .registration-title {
+      font-size: 24px;
+    }
+
+    .camera-content {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .video-preview-container,
+    .capture-preview {
+      width: 100%;
+      max-width: 280px;
+    }
+
+    .form-footer {
+      flex-direction: column;
+      gap: 15px;
+    }
+  }
+</style>
+
+<div class="registration-container">
+  <div class="registration-card">
+    <div class="registration-header">
+      <h3 class="registration-title">Register Account</h3>
+      <p class="registration-subtitle">Create your secure biometric account</p>
     </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="alert alert-{{ 'success' if category=='success' else 'danger' }}" role="alert">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% if error %}
+      <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('register') }}">
+      <!-- Account Information Section -->
+      <div class="form-section">
+        <div class="form-section-title">
+          <span>👤</span> Account Information
+        </div>
+
+        <div class="form-group">
+          <label for="username" class="form-label">Username</label>
+          <input type="text" name="username" id="username" required
+            class="form-control" placeholder="Enter your username">
+        </div>
+
+        <div class="form-group">
+          <label for="email" class="form-label">Email</label>
+          <input type="email" name="email" id="email" required
+            class="form-control" placeholder="Enter your email">
+        </div>
+
+        <div class="form-group">
+          <label for="age" class="form-label">Age</label>
+          <div class="input-group-container">
+            <span class="input-group-addon">🎂</span>
+            <input type="number" min="1" placeholder="21" name="age" id="age" required class="form-control">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <div class="input-group-container" style="max-width: none;">
+            <input type="password" name="password"  id="password" required
+              class="form-control" placeholder="Create a strong password" style="border-radius: 12px 0 0 12px;">
+            <button type="button" id="togglePassword" class="password-toggle-btn">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Biometric Section -->
+      <div class="form-section">
+        <div class="form-section-title">
+          <span>📸</span> Capture Live Face (Required)
+        </div>
+
+        <div class="camera-section">
+          <div class="camera-content">
+            <div class="camera-wrapper">
+              <div class="video-preview-container">
+                <video id="video" width="320" height="240" playsinline></video>
+                <canvas id="canvas" width="320" height="240"></canvas>
+                <div id="captureOverlay">✓ Capturing...</div>
+              </div>
+
+              <div>
+                <label class="capture-preview-label">Preview</label>
+                <div class="capture-preview">
+                  <img id="preview">
+                </div>
+              </div>
+
+              <div class="capture-btn-group">
+                <button type="button" id="captureBtn" class="btn">Capture Face</button>
+                <span id="captureStatus"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <input type="hidden" name="captured_image" id="captured_image">
+      </div>
+
+      <!-- Form Footer -->
+      <div class="form-footer">
+        <a href="{{ url_for('login') }}" class="login-link">Already registered? Sign In</a>
+        <button type="submit" class="btn submit-btn">Register Now</button>
+      </div>
+    </form>
+  </div>
 </div>
 
-<!-- JS Password Toggle -->
+<!-- Password Toggle Script -->
 <script>
-    document.getElementById('togglePassword').addEventListener('click', function () {
-        const pwd = document.getElementById('password');
-        const icon = this.querySelector('i');
-        const isHidden = pwd.type === "password";
+  document.getElementById('togglePassword').addEventListener('click', function () {
+    const pwd = document.getElementById('password');
+    const icon = this.querySelector('i');
+    const isHidden = pwd.type === "password";
 
-        pwd.type = isHidden ? "text" : "password";
-        icon.classList.toggle('fa-eye');
-        icon.classList.toggle('fa-eye-slash');
-    });
+    pwd.type = isHidden ? "text" : "password";
+    icon.classList.toggle('fa-eye');
+    icon.classList.toggle('fa-eye-slash');
+  });
 </script>
 
 <!-- Camera Capture Script -->
 <script>
-    let mediaStream = null;
-    let isCameraActive = false;
+  let mediaStream = null;
+  let isCameraActive = false;
 
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const preview = document.getElementById('preview');
-    const captureBtn = document.getElementById('captureBtn');
-    const captureStatus = document.getElementById('captureStatus');
-    const capturedImageInput = document.getElementById('captured_image');
-    const videoContainer = document.getElementById('videoContainer');
-    const captureOverlay = document.getElementById('captureOverlay');
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const preview = document.getElementById('preview');
+  const captureBtn = document.getElementById('captureBtn');
+  const captureStatus = document.getElementById('captureStatus');
+  const capturedImageInput = document.getElementById('captured_image');
+  const captureOverlay = document.getElementById('captureOverlay');
 
-    // Start camera on page load
-    async function startCamera() {
-        try {
-            mediaStream = await navigator.mediaDevices.getUserMedia({
-                video: { 
-                    facingMode: 'user',
-                    width: { ideal: 320 },
-                    height: { ideal: 240 }
-                }
-            });
-            
-            video.srcObject = mediaStream;
-            video.style.display = 'block';
-            isCameraActive = true;
-            captureStatus.textContent = '✓ Camera ready';
-            captureStatus.style.color = '#00ff00';
-            
-            video.onloadedmetadata = function() {
-                video.play();
-            };
-        } catch (err) {
-            console.error('Camera access denied:', err);
-            captureStatus.textContent = '✗ Camera access denied';
-            captureStatus.style.color = '#ff0000';
+  async function startCamera() {
+    try {
+      if (mediaStream) {
+        // Camera already started
+        captureStatus.textContent = '✓ Camera already running';
+        captureStatus.style.color = '#00ff88';
+        return;
+      }
+
+      captureStatus.textContent = '⏳ Starting camera...';
+      captureStatus.style.color = '#b8b8ff';
+
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 320 },
+          height: { ideal: 240 }
         }
+      });
+      
+      video.srcObject = mediaStream;
+      video.style.display = 'block';
+      isCameraActive = true;
+      captureStatus.textContent = '✓ Camera ready - Click capture to take photo';
+      captureStatus.style.color = '#00ff88';
+      
+      video.onloadedmetadata = function() {
+        video.play();
+      };
+    } catch (err) {
+      console.error('Camera access denied:', err);
+      captureStatus.textContent = '✗ Camera access denied';
+      captureStatus.style.color = '#ff0064';
+      isCameraActive = false;
+    }
+  }
+
+  captureBtn.addEventListener('click', async function(e) {
+    e.preventDefault();
+
+    // Start camera if not already active
+    if (!isCameraActive) {
+      await startCamera();
+      return;
     }
 
-    // Capture face image
-    captureBtn.addEventListener('click', function() {
-        if (!isCameraActive) {
-            captureStatus.textContent = '✗ Camera not ready';
-            captureStatus.style.color = '#ff0000';
-            return;
-        }
+    // If camera is active, capture the image
+    if (video.style.display === 'block' && video.srcObject) {
+      captureOverlay.style.display = 'flex';
 
-        // Show capturing overlay
-        captureOverlay.style.display = 'flex';
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Draw video frame to canvas
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      setTimeout(() => {
+        const imageData = canvas.toDataURL('image/jpeg');
+        preview.src = imageData;
+        preview.style.display = 'block';
+        capturedImageInput.value = imageData;
+        
+        captureOverlay.style.display = 'none';
+        captureStatus.textContent = '✓ Face captured successfully';
+        captureStatus.style.color = '#00ff88';
+      }, 500);
+    }
+  });
 
-        // Convert canvas to image
-        setTimeout(() => {
-            const imageData = canvas.toDataURL('image/jpeg');
-            preview.src = imageData;
-            preview.style.display = 'block';
-            capturedImageInput.value = imageData;
-            
-            captureOverlay.style.display = 'none';
-            captureStatus.textContent = '✓ Face captured successfully';
-            captureStatus.style.color = '#00ff00';
-        }, 500);
-    });
-
-    // Start camera when page loads
-    window.addEventListener('load', startCamera);
-
-    // Stop camera on page unload
-    window.addEventListener('beforeunload', function() {
-        if (mediaStream) {
-            mediaStream.getTracks().forEach(track => track.stop());
-        }
-    });
+  window.addEventListener('beforeunload', function() {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
+    }
+  });
 </script>
 
 {% endblock %}

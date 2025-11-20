@@ -1,236 +1,525 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="mb-3">
-  <a href="{{ url_for('profile') }}" class="btn btn-info">
-    <i class="fas fa-user-cog"></i> Profile Settings
-  </a>
-</div>
 
-<div class="row">
-  <div class="col-md-6">
-    <div class="card bg-white shadow-sm mb-3">
-      <div class="card-body">
-        <h3 class="card-title">Your Attendance Dashboard</h3>
-        <p class="card-text">Use the camera below to record your attendance. Make sure your face is visible to the camera.</p>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
 
-        <div class="text-center mb-3">
-          <!-- video stream - off by default -->
-          <div class="ratio ratio-16x9 bg-dark rounded" style="display: flex; align-items: center; justify-content: center;">
-            <img id="video-stream" alt="Live camera" class="img-fluid rounded" style="display:none; width:100%; height:100%; object-fit:cover;" />
-            <div id="camera-placeholder" class="text-white text-center">
-              <i class="fas fa-camera" style="font-size: 48px; margin-bottom: 10px; display: block;"></i>
-              <p>Camera is OFF. Click "Start Recording" to begin.</p>
-            </div>
-          </div>
-        </div>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #0f0f1e 0%, #1a0a2e 100%);
+        color: #fff;
+        min-height: 100vh;
+    }
 
-        <!-- Start and Stop Record Buttons -->
-        <div class="d-grid gap-2 mb-3">
-          <button type="button" class="btn btn-success btn-lg" onclick="startAttendance()">
-            <i class="fas fa-play-circle"></i> Start Recording
-          </button>
-          <button type="button" class="btn btn-danger btn-lg" onclick="stopAttendance()">
-            <i class="fas fa-stop-circle"></i> Stop Recording
-          </button>
-        </div>
+    .container-custom {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
 
-        <div id="attendance-status" class="alert alert-info" style="display:none;"></div>
+    header {
+        text-align: center;
+        margin-bottom: 50px;
+        animation: slideDown 0.6s ease-out;
+    }
 
-        <div id="detected" class="mt-3">
-          <h5>Last recognized</h5>
-          <p id="detected-name">{{ last_detection.name if last_detection else 'N/A' }}</p>
-          <p id="detected-reg">{{ last_detection.reg_id if last_detection else 'N/A' }}</p>
-          <p id="detected-time">{{ last_detection.timestamp if last_detection else '' }}</p>
-        </div>
-      </div>
-    </div>
-  </div>
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 
-  <div class="col-md-6">
-    <div class="card bg-white shadow-sm mb-3">
-      <div class="card-body">
-        <h4 class="card-title">Your Attendance Records</h4>
-        {% if attendance_records and attendance_records|length > 0 %}
-        <div class="table-responsive">
-        <table class="table table-sm table-striped">
-          <thead class="table-dark">
-            <tr>
-              <th>Date</th>
-              <th>Start Time</th>
-              <th>End Time</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in attendance_records %}
-            <tr>
-              <td><strong>{{ r.date }}</strong></td>
-              <td>
-                {% if r.start_time %}
-                  <span class="badge bg-success">{{ r.start_time }}</span>
-                {% else %}
-                  <span class="text-muted">-</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if r.end_time %}
-                  <span class="badge bg-info">{{ r.end_time }}</span>
-                {% else %}
-                  <span class="text-muted">-</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if r.start_time and r.end_time %}
-                  <span class="badge bg-success">Complete</span>
-                {% elif r.start_time %}
-                  <span class="badge bg-warning text-dark">In Progress</span>
-                {% else %}
-                  <span class="badge bg-danger">Absent</span>
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        </div>
-        {% else %}
-        <p>No attendance records yet.</p>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-</div>
+    h1 {
+        font-size: 48px;
+        font-weight: 700;
+        background: linear-gradient(135deg, #ff006e, #8338ec, #3a86ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 10px;
+        letter-spacing: -1px;
+    }
 
-<script>
-// Poll /last_detection and update the small status area so the student can
-// Poll for last detection every 1.5 seconds
-let detectionPolling = null;
-let autoSaved = false;  // Flag to prevent duplicate saves
+    .subtitle {
+        font-size: 16px;
+        color: #a0a0b0;
+        font-weight: 500;
+    }
 
-function pollLastDetection() {
-  fetch("{{ url_for('last_detection_route') }}")
-    .then(response => response.json())
-    .then(data => {
-      // Update the Last recognized section
-      if (data.name && data.name !== "Unknown") {
-        document.getElementById('detected-name').textContent = data.name;
-        document.getElementById('detected-reg').textContent = data.reg_id;
-        document.getElementById('detected-time').textContent = data.timestamp;
-        
-        // Auto-save attendance on first detection
-        if (!autoSaved) {
-          autoSaved = true;
-          saveAttendanceOnDetection(data.name, data.reg_id);
+    .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        animation: fadeIn 0.8s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @media (max-width: 768px) {
+        .grid {
+            grid-template-columns: 1fr;
         }
-      }
-    })
-    .catch(error => console.error('Error fetching detection:', error));
-}
-
-// Start Attendance
-async function startAttendance() {
-  // Reset auto-save flag for new session
-  autoSaved = false;
-  
-  // Start the camera - show video stream and hide placeholder
-  const videoStream = document.getElementById('video-stream');
-  const cameraPlaceholder = document.getElementById('camera-placeholder');
-  
-  // Set the video source and show it
-  videoStream.src = "{{ url_for('video1') }}";
-  videoStream.style.display = 'block';
-  cameraPlaceholder.style.display = 'none';
-  
-  // Start polling for face detection
-  if (detectionPolling) clearInterval(detectionPolling);
-  detectionPolling = setInterval(pollLastDetection, 1500);
-
-  try {
-    const response = await fetch("{{ url_for('student_start_record') }}", {
-      method: 'POST'
-    });
-    const result = await response.json();
-    
-    const statusDiv = document.getElementById('attendance-status');
-    if (result.success) {
-      statusDiv.className = 'alert alert-info';
-      statusDiv.textContent = '⏹ Recording started - Waiting for face detection...';
-      statusDiv.style.display = 'block';
-    } else {
-      statusDiv.className = 'alert alert-danger';
-      statusDiv.textContent = '✗ ' + result.message;
-      statusDiv.style.display = 'block';
+        h1 {
+            font-size: 32px;
+        }
     }
-  } catch (error) {
-    alert('Error: ' + error.message);
-  }
-}
 
-// Auto-save attendance when face is detected
-async function saveAttendanceOnDetection(name, reg_id) {
-  try {
-    const response = await fetch("{{ url_for('student_start_record') }}", {
-      method: 'POST'
-    });
-    const result = await response.json();
-    
-    const statusDiv = document.getElementById('attendance-status');
-    if (result.success) {
-      statusDiv.className = 'alert alert-success';
-      statusDiv.textContent = '✓ ' + result.message + ' (Detected: ' + name + ')';
-      statusDiv.style.display = 'block';
-    } else {
-      statusDiv.className = 'alert alert-warning';
-      statusDiv.textContent = '⚠ ' + result.message;
-      statusDiv.style.display = 'block';
+    .card {
+        background: rgba(20, 10, 40, 0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 0, 110, 0.2);
+        border-radius: 20px;
+        padding: 35px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
     }
-  } catch (error) {
-    console.error('Auto-save error:', error);
-  }
-}
 
-// Stop Attendance
-async function stopAttendance() {
-  // Stop polling immediately
-  if (detectionPolling) {
-    clearInterval(detectionPolling);
-    detectionPolling = null;
-  }
-  
-  // Turn off camera immediately
-  const videoStream = document.getElementById('video-stream');
-  const cameraPlaceholder = document.getElementById('camera-placeholder');
-  videoStream.src = '';
-  videoStream.style.display = 'none';
-  cameraPlaceholder.style.display = 'block';
-  
-  try {
-    const response = await fetch("{{ url_for('student_stop_record') }}", {
-      method: 'POST'
-    });
-    const result = await response.json();
-    
-    const statusDiv = document.getElementById('attendance-status');
-    if (result.success) {
-      statusDiv.className = 'alert alert-success';
-      statusDiv.textContent = '✓ ' + result.message + ' (Stopped at: ' + result.time + ')';
-      statusDiv.style.display = 'block';
-      
-      // Refresh page after 2 seconds to show updated records
-      setTimeout(() => location.reload(), 2000);
-    } else {
-      statusDiv.className = 'alert alert-danger';
-      statusDiv.textContent = '✗ ' + result.message;
-      statusDiv.style.display = 'block';
+    .card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 0, 110, 0.1) 0%, transparent 70%);
+        pointer-events: none;
     }
-  } catch (error) {
-    alert('Error: ' + error.message);
-  }
-}
-</script>
 
-<!-- Add Font Awesome for icons -->
+    .card:hover {
+        border-color: rgba(255, 0, 110, 0.5);
+        transform: translateY(-5px);
+        box-shadow: 0 20px 50px rgba(255, 0, 110, 0.15);
+    }
+
+    .card-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #ff006e;
+    }
+
+    .card-description {
+        font-size: 14px;
+        color: #b0b0c0;
+        margin-bottom: 25px;
+        line-height: 1.6;
+    }
+
+    .camera-container {
+        background: linear-gradient(135deg, rgba(51, 134, 255, 0.1) 0%, rgba(255, 0, 110, 0.05) 100%);
+        border: 2px dashed rgba(51, 134, 255, 0.3);
+        border-radius: 16px;
+        aspect-ratio: 16/9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 25px 0;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .camera-container:hover {
+        border-color: rgba(255, 0, 110, 0.5);
+        background: linear-gradient(135deg, rgba(51, 134, 255, 0.15) 0%, rgba(255, 0, 110, 0.1) 100%);
+    }
+
+    .camera-placeholder {
+        text-align: center;
+        z-index: 2;
+    }
+
+    .camera-icon {
+        font-size: 60px;
+        color: #3a86ff;
+        margin-bottom: 15px;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+
+    .camera-status {
+        font-size: 14px;
+        color: #b0b0c0;
+        font-weight: 500;
+    }
+
+    .button-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin: 25px 0;
+    }
+
+    button {
+        padding: 14px 24px;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-start {
+        background: linear-gradient(135deg, #3a86ff, #1e90ff);
+        color: white;
+    }
+
+    .btn-start:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(58, 134, 255, 0.4);
+    }
+
+    .btn-stop {
+        background: linear-gradient(135deg, #ff006e, #ff4d7d);
+        color: white;
+    }
+
+    .btn-stop:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(255, 0, 110, 0.4);
+    }
+
+    button i {
+        font-size: 18px;
+    }
+
+    .detected-box {
+        background: rgba(58, 134, 255, 0.1);
+        border-left: 4px solid #3a86ff;
+        padding: 18px;
+        border-radius: 12px;
+        margin-top: 25px;
+    }
+
+    .detected-label {
+        font-size: 12px;
+        color: #3a86ff;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+        font-weight: 700;
+    }
+
+    .detected-name {
+        font-size: 20px;
+        font-weight: 700;
+        color: #ff006e;
+        margin-bottom: 6px;
+    }
+
+    .detected-reg {
+        font-size: 14px;
+        color: #b0b0c0;
+        margin-bottom: 4px;
+    }
+
+    .detected-time {
+        font-size: 12px;
+        color: #6e6e80;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        margin-top: 25px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    thead {
+        background: linear-gradient(135deg, #3a86ff, #1e90ff);
+    }
+
+    th {
+        padding: 16px 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: white;
+    }
+
+    th:first-child {
+        border-radius: 12px 0 0 0;
+    }
+
+    th:last-child {
+        border-radius: 0 12px 0 0;
+    }
+
+    td {
+        padding: 16px 12px;
+        border-bottom: 1px solid rgba(255, 0, 110, 0.1);
+        font-size: 14px;
+    }
+
+    tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    tbody tr:hover {
+        background: rgba(58, 134, 255, 0.05);
+    }
+
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .date-cell {
+        color: #ff006e;
+        font-weight: 600;
+    }
+
+    .time-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-start {
+        background: rgba(58, 205, 114, 0.2);
+        color: #3acd72;
+        border: 1px solid rgba(58, 205, 114, 0.3);
+    }
+
+    .badge-end {
+        background: rgba(77, 184, 255, 0.2);
+        color: #4db8ff;
+        border: 1px solid rgba(77, 184, 255, 0.3);
+    }
+
+    .badge-complete {
+        background: rgba(58, 205, 114, 0.2);
+        color: #3acd72;
+        border: 1px solid rgba(58, 205, 114, 0.3);
+    }
+
+    .badge-progress {
+        background: rgba(255, 193, 7, 0.2);
+        color: #ffc107;
+        border: 1px solid rgba(255, 193, 7, 0.3);
+    }
+
+    .badge-absent {
+        background: rgba(255, 0, 110, 0.2);
+        color: #ff006e;
+        border: 1px solid rgba(255, 0, 110, 0.3);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6e6e80;
+    }
+
+    .empty-state i {
+        font-size: 48px;
+        color: #3a86ff;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        font-size: 14px;
+        line-height: 1.6;
+    }
+</style>
+
+<div class="container-custom">
+    <header>
+        <h1><i class="fas fa-face-smile"></i> Attendance Tracker</h1>
+        <p class="subtitle">Smart face recognition attendance system</p>
+    </header>
+
+    <div class="grid">
+        <!-- Camera Section -->
+        <div class="card">
+            <div class="card-title">
+                <i class="fas fa-camera"></i> Camera Session
+            </div>
+            <p class="card-description">Start face recognition to record your attendance in real-time</p>
+
+            <div class="camera-container">
+                <div class="camera-placeholder">
+                    <div class="camera-icon">
+                        <i class="fas fa-video"></i>
+                    </div>
+                    <p class="camera-status">Camera is OFF — Ready to Start</p>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-start" onclick="startAttendance()">
+                    <i class="fas fa-play"></i> Start Recording
+                </button>
+                <button class="btn-stop" onclick="stopAttendance()">
+                    <i class="fas fa-stop"></i> Stop Recording
+                </button>
+            </div>
+
+            <div id="status-message" style="margin-top: 15px; padding: 12px; border-radius: 10px; display: none; font-weight: 600; text-align: center;"></div>
+
+            <div class="detected-box">
+                <div class="detected-label">✨ Last Recognized</div>
+                <div class="detected-name" id="detected-name">{{ last_detection.name if last_detection else 'N/A' }}</div>
+                <div class="detected-reg" id="detected-reg">{{ last_detection.reg_id if last_detection else 'N/A' }}</div>
+                <div class="detected-time" id="detected-time">{{ last_detection.timestamp if last_detection else '' }}</div>
+            </div>
+        </div>
+
+        <!-- Attendance Records Section -->
+        <div class="card">
+            <div class="card-title">
+                <i class="fas fa-calendar-check"></i> Attendance Records
+            </div>
+            <p class="card-description">View your complete attendance history and status</p>
+
+            {% if attendance_records and attendance_records|length > 0 %}
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Start Time</th>
+                            <th>End Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in attendance_records %}
+                        <tr>
+                            <td class="date-cell">{{ r.date }}</td>
+                            <td>
+                                {% if r.start_time %}
+                                    <span class="time-badge badge-start">{{ r.start_time }}</span>
+                                {% else %}
+                                    <span style="color: #666;">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if r.end_time %}
+                                    <span class="time-badge badge-end">{{ r.end_time }}</span>
+                                {% else %}
+                                    <span style="color: #666;">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if r.start_time and r.end_time %}
+                                    <span class="time-badge badge-complete">Complete</span>
+                                {% elif r.start_time %}
+                                    <span class="time-badge badge-progress">In Progress</span>
+                                {% else %}
+                                    <span class="time-badge badge-absent">Absent</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No attendance records yet. Start recording to get started!</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- FONT AWESOME -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<!-- JavaScript for Start/Stop Recording -->
+<script>
+    function showMessage(message, isSuccess) {
+        const messageDiv = document.getElementById('status-message');
+        if (!messageDiv) return;
+        
+        messageDiv.textContent = message;
+        messageDiv.style.display = 'block';
+        messageDiv.style.backgroundColor = isSuccess ? 'rgba(58, 205, 114, 0.2)' : 'rgba(255, 0, 110, 0.2)';
+        messageDiv.style.color = isSuccess ? '#3acd72' : '#ff006e';
+        messageDiv.style.border = isSuccess ? '1px solid rgba(58, 205, 114, 0.3)' : '1px solid rgba(255, 0, 110, 0.3)';
+        
+        setTimeout(() => {
+            messageDiv.style.display = 'none';
+        }, 5000);
+    }
+
+    function startAttendance() {
+        fetch('{{ url_for("student_start_record") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            showMessage(data.message, data.success);
+            if (data.success) {
+                // Refresh the page to show updated attendance
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('An error occurred while starting attendance.', false);
+        });
+    }
+
+    function stopAttendance() {
+        fetch('{{ url_for("student_stop_record") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            showMessage(data.message, data.success);
+            if (data.success) {
+                // Refresh the page to show updated attendance
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('An error occurred while stopping attendance.', false);
+        });
+    }
+</script>
 
 {% endblock %}

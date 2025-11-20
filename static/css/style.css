@@ -128,6 +128,24 @@ tbody tr {
     background-color: rgba(249, 249, 249, 0.9);
 }
 
+.hover-btn:hover {
+    background-color: #9c3eff !important;
+    box-shadow: 0 0 15px #b56bff !important;
+    transform: translateY(-2px);
+
+}
+.hover-btn-2:hover {
+    background-color: #ffffff33 !important;
+    box-shadow: 0 0 15px #b56bff !important;
+    transform: translateY(-2px);
+}
+.profile-hover:hover {
+    background-color: #6b21a8 !important;
+    color: white !important;
+    box-shadow: 0 0 15px #b56bff !important;
+    transform: translateY(-2px);
+}
+
 /* Responsive design */
 @media screen and (max-width: 768px) {
     .data_form,
