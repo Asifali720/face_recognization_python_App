@@ -221,6 +221,7 @@ https://github.com/ageitgey/face_recognition_models/releases/
 
 ## 🚀 Quick Start Command (Windows)
 
+### Method 1: سادہ طریقہ
 ```batch
 # 1. Project میں جائیں
 cd C:\path\to\project
@@ -233,6 +234,70 @@ python app.py
 
 # 4. Browser میں کھولیں
 # http://localhost:5000
+```
+
+### Method 2: DEV Mode کے ساتھ (Linux جیسے - Recommended)
+
+**Linux میں:**
+```bash
+DEV=1 python app.py
+```
+
+**Windows Command Prompt میں:**
+```batch
+set DEV=1
+python app.py
+```
+
+**Windows PowerShell میں:**
+```powershell
+$env:DEV=1
+python app.py
+```
+
+### Method 3: `.bat` Script بنائیں (سب سے آسان)
+
+`run_dev.bat` بنائیں اور یہ کوڈ ڈالیں:
+```batch
+@echo off
+cd /d "%~dp0"
+call venv\Scripts\activate.bat
+set DEV=1
+python app.py
+pause
+```
+
+پھر صرف اس فائل کو double-click کریں۔
+
+### Method 4: `.ps1` PowerShell Script (Modern Windows)
+
+`run_dev.ps1` بنائیں:
+```powershell
+$env:DEV = "1"
+& .\venv\Scripts\Activate.ps1
+python app.py
+```
+
+پھر PowerShell میں چلائیں:
+```powershell
+.\run_dev.ps1
+```
+
+---
+
+## 🔑 Environment Variables کیا کرتے ہیں؟
+
+`DEV=1` سیٹ کرنے سے:
+- ✅ Flask Debug Mode ON ہوتا ہے
+- ✅ Auto-reload ہوتا ہے (code change پر server restart)
+- ✅ Detailed error messages دکھتے ہیں
+- ✅ Development کے لیے بہترین ہے
+
+**Production میں:**
+```batch
+# DEV نہ سیٹ کریں یا
+set DEV=0
+python app.py
 ```
 
 ---
